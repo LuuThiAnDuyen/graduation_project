@@ -10,9 +10,9 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 try:
     # Thử dùng tên model đầy đủ có tiền tố 'models/'
     response = client.models.generate_content(
-        #model="gemini-3-flash-preview",
+        # model="gemini-3-flash-preview",
         model="gemini-flash-latest",
-        contents= """
+        contents="""
 You are a senior QA engineer.
 From the following user story, generate Gherkin scenarios
 including positive, negative, and boundary cases.

@@ -190,6 +190,9 @@ def _GoogleSearch_to_mldev(
     parent_object: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
   to_object: dict[str, Any] = {}
+  if getv(from_object, ['search_types']) is not None:
+    setv(to_object, ['searchTypes'], getv(from_object, ['search_types']))
+
   if getv(from_object, ['exclude_domains']) is not None:
     raise ValueError(
         'exclude_domains parameter is not supported in Gemini API.'
@@ -483,6 +486,13 @@ def _Tool_to_mldev(
   if getv(from_object, ['file_search']) is not None:
     setv(to_object, ['fileSearch'], getv(from_object, ['file_search']))
 
+  if getv(from_object, ['google_search']) is not None:
+    setv(
+        to_object,
+        ['googleSearch'],
+        _GoogleSearch_to_mldev(getv(from_object, ['google_search']), to_object),
+    )
+
   if getv(from_object, ['code_execution']) is not None:
     setv(to_object, ['codeExecution'], getv(from_object, ['code_execution']))
 
@@ -505,13 +515,6 @@ def _Tool_to_mldev(
         _GoogleMaps_to_mldev(getv(from_object, ['google_maps']), to_object),
     )
 
-  if getv(from_object, ['google_search']) is not None:
-    setv(
-        to_object,
-        ['googleSearch'],
-        _GoogleSearch_to_mldev(getv(from_object, ['google_search']), to_object),
-    )
-
   if getv(from_object, ['google_search_retrieval']) is not None:
     setv(
         to_object,
@@ -521,5 +524,12 @@ def _Tool_to_mldev(
 
   if getv(from_object, ['url_context']) is not None:
     setv(to_object, ['urlContext'], getv(from_object, ['url_context']))
+
+  if getv(from_object, ['mcp_servers']) is not None:
+    setv(
+        to_object,
+        ['mcpServers'],
+        [item for item in getv(from_object, ['mcp_servers'])],
+    )
 
   return to_object
