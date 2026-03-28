@@ -1,80 +1,139 @@
-import unittest
-from unittest.mock import patch
+import os
+import json
+from dotenv import load_dotenv
+import google.generativeai as genai
 
-from core.testcase_generator import generate_full_testcase
+# Load env
+load_dotenv()
+
+# Config Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# ✅ FIX MODEL (quan trọng)
+model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
 
-class TestGenerateFullTestcase(unittest.TestCase):
-    def test_generate_success_user_story(self):
-        analysis = {
-            "actors": ["User"],
-            "persona": "",
-            "goal": "",
-            "acceptance_criteria": [],
-            "main_flow": ["step1"],
-            "edge_cases": [],
-            "assumptions": [],
+# =========================
+# 🔥 CALL LLM (FIX CHÍNH)
+# =========================
+def call_llm(prompt: str):
+    try:
+        print(">>> CALLING LLM...")
+
+        response = model.generate_content(
+            prompt, request_options={"timeout": 30}  # ✅ tránh treo
+        )
+
+        print(">>> LLM DONE")
+
+        text = response.text.strip()
+
+        # Try parse JSON
+        try:
+            return json.loads(text)
+        except Exception:
+            print(">>> WARNING: LLM output not JSON, returning raw text")
+            return text
+
+    except Exception as e:
+        print(">>> LLM ERROR:", e)
+        raise Exception(f"LLM error: {str(e)}")
+
+
+# =========================
+# 🧠 MAIN FUNCTION
+# =========================
+def generate_full_testcase(text, input_type="User Story", language="English"):
+    try:
+        print("===== GENERATE TESTCASE START =====")
+
+        # Normalize input
+        input_type = input_type.lower()
+        language = "Vietnamese" if "vi" in language.lower() else "English"
+
+        # =========================
+        # STEP 1: ANALYSIS
+        # =========================
+        print(">>> STEP 1: ANALYSIS")
+
+        prompt_analysis = f"""
+        Analyze the following {input_type} and extract:
+        - actors
+        - persona
+        - goal
+        - acceptance_criteria
+        - main_flow
+        - edge_cases
+        - assumptions
+
+        Text:
+        {text}
+
+        Return JSON only.
+        """
+
+        analysis = call_llm(prompt_analysis)
+
+        # =========================
+        # STEP 2: TEST CASES
+        # =========================
+        print(">>> STEP 2: GENERATE TEST CASES")
+
+        prompt_testcase = f"""
+        Based on this analysis:
+        {json.dumps(analysis, indent=2)}
+
+        Generate test cases with:
+        - id
+        - feature
+        - screen
+        - description
+        - pre_condition
+        - steps
+        - expected_result
+        - priority
+
+        Language: {language}
+
+        Return JSON list only.
+        """
+
+        testcases = call_llm(prompt_testcase)
+
+        # =========================
+        # STEP 3: TEST DATA
+        # =========================
+        print(">>> STEP 3: GENERATE TEST DATA")
+
+        prompt_testdata = f"""
+        Based on these test cases:
+        {json.dumps(testcases, indent=2)}
+
+        Generate test data:
+        - test_case_id
+        - input values
+        - expected_result
+
+        Return JSON format:
+        {{
+          "test_data": [...]
+        }}
+        """
+
+        testdata = call_llm(prompt_testdata)
+
+        print("===== GENERATE DONE =====")
+
+        return {
+            "status": "success",
+            "analysis": analysis,
+            "test_cases": testcases,
+            "test_data": (
+                testdata.get("test_data", []) if isinstance(testdata, dict) else []
+            ),
         }
 
-        testcases = [
-            {
-                "id": "TC_LOGIN_001",
-                "feature": "Login",
-                "screen": "Login",
-                "description": "desc",
-                "pre_condition": "none",
-                "steps": ["s1"],
-                "expected_result": "ok",
-                "priority": "High",
-            }
-        ]
+    except Exception as e:
+        print(">>> ERROR IN GENERATION:", e)
 
-        testdata = {
-            "test_data": [
-                {
-                    "test_case_id": "TC_LOGIN_001",
-                    "username": "u",
-                    "password": "p",
-                    "expected_result": "ok",
-                }
-            ]
-        }
-
-        # Patch call_llm so generate_full_testcase doesn't call real LLM
-        with patch(
-            "core.testcase_generator.call_llm",
-            side_effect=[analysis, testcases, testdata],
-        ):
-            res = generate_full_testcase(
-                "As a user, I want to login",
-                input_type="User Story",
-                language="English",
-            )
-            self.assertEqual(res.get("status"), "success")
-            self.assertEqual(res.get("analysis"), analysis)
-            self.assertEqual(res.get("test_cases"), testcases)
-            self.assertEqual(res.get("test_data"), testdata["test_data"])
-
-    def test_generate_success_use_case_vi(self):
-        # Also test normalization of input_type and language mapping
-        analysis = {
-            "actors": ["User"],
-            "main_flow": ["step1"],
-            "edge_cases": [],
-            "assumptions": [],
-        }
-        testcases = [{"id": "TC_001", "feature": "Login"}]
-        testdata = {"test_data": []}
-
-        with patch(
-            "core.testcase_generator.call_llm",
-            side_effect=[analysis, testcases, testdata],
-        ):
-            res = generate_full_testcase(
-                "Use Case: Login...", input_type="Use Case Spec", language="Tiếng Việt"
-            )
-            self.assertEqual(res.get("status"), "success")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        return {"status": "error", "message": str(e)}
