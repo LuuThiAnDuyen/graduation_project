@@ -19,11 +19,7 @@ from pypdf import PdfReader
 # CONFIG API URL
 # ===============================
 API_URL = "http://localhost:8000/generate"
-# Khi dùng ngrok → đổi thành:
-# API_URL = "https://abc123.ngrok-free.app/generate"
 
-# ===============================
-# STATE
 # ===============================
 if "history" not in st.session_state:
     st.session_state.history = []
