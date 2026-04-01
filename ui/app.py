@@ -1,227 +1,279 @@
-import os
-import sys
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT_DIR)
-
 import streamlit as st
 import pandas as pd
-from io import BytesIO
-from datetime import datetime
 import json
-import requests
-
+import os
+import sys
+import time
+from datetime import datetime
+from io import BytesIO
 from openpyxl import Workbook
 from docx import Document
 from pypdf import PdfReader
+from google import genai
+from dotenv import load_dotenv
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-# ===============================
-# CONFIG API URL
-# ===============================
-API_URL = "http://localhost:8000/generate"
+load_dotenv()
 
-# ===============================
-if "history" not in st.session_state:
-    st.session_state.history = []
+# ================= FIX PATH =================
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-if "generated" not in st.session_state:
-    st.session_state.generated = False
+# ================= IMPORT CORE =================
+from core.testcase_generator import run_pipeline
 
-if "last_result" not in st.session_state:
-    st.session_state.last_result = None
-
-# ===============================
-# UI
-# ===============================
-st.set_page_config(page_title="AI Test Case Generator")
-st.title("🚀 AI Test Case Generator")
-
-# ===============================
-# INPUT
-# ===============================
-input_type = st.selectbox(
-    "Loại yêu cầu", ["User Story", "Use Case Spec", "Natural Language"]
-)
-
-language = st.selectbox("Ngôn ngữ", ["Tiếng Việt", "English"])
-
-option = st.radio("Input", ["Text", "Upload File"])
+# ================= HISTORY =================
+HISTORY_FILE = "history.json"
 
 
-def get_placeholder(t):
-    if t == "User Story":
-        return "As a user, I want to login..."
-    elif t == "Use Case Spec":
-        return "Use Case: Login..."
-    return "User logs into system..."
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
 
 
-def read_file(file):
-    ext = file.name.split(".")[-1]
-
-    if ext == "txt":
-        return file.read().decode("utf-8")
-    elif ext == "docx":
-        return "\n".join([p.text for p in Document(file).paragraphs])
-    elif ext == "pdf":
-        reader = PdfReader(file)
-        return "\n".join([p.extract_text() or "" for p in reader.pages])
-    return ""
+def save_history(history):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
 
 
-user_input = ""
-
-if option == "Text":
-    user_input = st.text_area(
-        "Requirement", height=250, placeholder=get_placeholder(input_type)
-    )
-else:
-    f = st.file_uploader("Upload", type=["txt", "docx", "pdf"])
-    if f:
-        user_input = read_file(f)
-        st.text_area("Preview", user_input, height=200)
-
-
-# ===============================
-# EXPORT FUNCTIONS
-# ===============================
-def export_excel(data):
+# ================= EXCEL EXPORT =================
+def to_excel(test_cases):
     wb = Workbook()
     ws = wb.active
-    ws.title = "TestCases"
+    ws.title = "Test Cases"
 
     headers = [
-        "id",
-        "feature",
-        "screen",
-        "description",
-        "pre_condition",
-        "steps",
-        "expected_result",
+        "ID",
+        "Title",
+        "Precondition",
+        "Steps",
+        "Expected Result",
+        "Priority",
+        "Type",
+        "DB Query",
+        "DB Expected",
     ]
 
     ws.append(headers)
 
-    for row in data:
-        ws.append(
-            [
-                row.get("id"),
-                row.get("feature"),
-                row.get("screen"),
-                row.get("description"),
-                row.get("pre_condition"),
-                "\n".join(row.get("steps", [])),
-                row.get("expected_result"),
-            ]
-        )
+    # ===== STYLE =====
+    header_fill = PatternFill(
+        start_color="D9EAF7", end_color="D9EAF7", fill_type="solid"
+    )  # xanh pastel
+    header_font = Font(bold=True)
+    align = Alignment(vertical="top", wrap_text=True)
+
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    # ===== HEADER STYLE =====
+    for col_num, _ in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = align
+        cell.border = thin_border
+
+    # ===== DATA =====
+    for row_idx, tc in enumerate(test_cases, start=2):
+        steps = "\n".join(tc.get("steps", []))
+
+        row_data = [
+            tc.get("id"),
+            tc.get("title"),
+            tc.get("precondition"),
+            steps,
+            tc.get("expected"),
+            tc.get("priority"),
+            tc.get("type"),
+            tc.get("db_check"),
+            tc.get("db_expected"),
+        ]
+
+        ws.append(row_data)
+
+        # Apply style từng cell
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.alignment = align
+            cell.border = thin_border
+
+    # ===== AUTO WIDTH =====
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+
+        for cell in col:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+
+        ws.column_dimensions[col_letter].width = min(max_length + 5, 50)
 
     output = BytesIO()
     wb.save(output)
     return output.getvalue()
 
+# ================= UI CONFIG =================
+st.set_page_config(page_title="AI Test Case Generator", layout="wide")
 
-def export_testdata_excel(testdata):
-    df = pd.DataFrame(testdata)
-    output = BytesIO()
-    df.to_excel(output, index=False)
-    return output.getvalue()
+st.title("🚀 AI Test Case Generator")
+
+# ================= SESSION =================
+if "history" not in st.session_state:
+    st.session_state.history = load_history()
+
+if "selected_history" not in st.session_state:
+    st.session_state.selected_history = None
 
 
-def generate_filename():
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    return f"TestCases_{timestamp}.xlsx"
+# ================= SIDEBAR =================
+st.sidebar.header("⚙️ Config")
+
+input_type = st.sidebar.selectbox(
+    "Loại input", ["User Story", "Use Case Spec", "Natural Language"]
+)
+
+language = st.sidebar.selectbox("Ngôn ngữ", ["Tiếng Việt", "English"])
+
+option = st.sidebar.radio("Input", ["Text", "Upload File"])
 
 
-# ===============================
-# GENERATE BUTTON (CALL API)
-# ===============================
-if st.button("Generate"):
+# ================= HISTORY =================
+st.sidebar.subheader("🕘 History")
+
+if st.session_state.history:
+    idx = st.sidebar.selectbox(
+        "Chọn lịch sử",
+        range(len(st.session_state.history)),
+        format_func=lambda i: f"{i+1}. {st.session_state.history[i]['time']} - {st.session_state.history[i]['input'][:30]}...",
+    )
+
+    if st.sidebar.button("🔍 Xem lại"):
+        st.session_state.selected_history = st.session_state.history[idx]
+
+    if st.sidebar.button("🗑️ Xoá lịch sử"):
+        st.session_state.history = []
+        save_history([])
+        st.sidebar.success("Đã xoá!")
+
+
+# ================= INPUT =================
+user_input = ""
+
+if option == "Text":
+    user_input = st.text_area("Requirement", height=250)
+
+else:
+    file = st.file_uploader("Upload file", type=["txt", "docx", "pdf"])
+
+    if file:
+        ext = file.name.split(".")[-1]
+
+        if ext == "txt":
+            user_input = file.read().decode("utf-8")
+
+        elif ext == "docx":
+            user_input = "\n".join([p.text for p in Document(file).paragraphs])
+
+        elif ext == "pdf":
+            user_input = "\n".join(
+                [p.extract_text() or "" for p in PdfReader(file).pages]
+            )
+
+
+# ================= EXECUTE =================
+if st.button("🔥 Generate Now"):
 
     if not user_input.strip():
-        st.warning("Nhập nội dung")
+        st.warning("❗ Không được bỏ trống input")
         st.stop()
 
-    with st.spinner("Generating..."):
-        try:
-            response = requests.post(
-                API_URL,
-                json={
-                    "text": user_input,
-                    "input_type": input_type,
-                    "language": language,
-                },
-                timeout=60,
-            )
+    try:
+        with st.spinner("Đang xử lý..."):
+            # ✅ GỌI PIPELINE (ĐÃ FIX)
+            result = run_pipeline(user_input)
 
-            data = response.json()
+            if not result:
+                st.error("❌ Không nhận được kết quả từ LLM")
+                st.stop()
 
-        except Exception as e:
-            st.error(f"API error: {e}")
-            st.stop()
+            status = result.get("status")
 
-    if data.get("status") != "success":
-        st.error("Generation failed")
-    else:
-        st.session_state.generated = True
-        st.session_state.last_result = data
-        st.session_state.history.append(data)
+            # ❌ INPUT KHÔNG ĐỦ RÕ
+            if status == "INPUT_AMBIGUOUS":
+                st.error("❗ Input chưa đủ rõ")
 
-# ===============================
-# SHOW RESULT
-# ===============================
-if st.session_state.generated and st.session_state.last_result:
+            # ❌ ERROR
+            elif status == "ERROR":
+                st.error("❗ Có lỗi xảy ra khi xử lý")
 
-    result = st.session_state.last_result
+            # ✅ SUCCESS
+            elif status == "SUCCESS":
+                st.success("✅ Done!")
 
-    tab1, tab2, tab3 = st.tabs(["Analysis", "TestCases", "Test Data"])
+                record = {
+                    "id": str(time.time()),
+                    "input": user_input,
+                    "test_cases": result.get("test_cases", []),
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                }
+                st.session_state.selected_history = record
+                st.session_state.history.append(record)
+                save_history(st.session_state.history)
 
-    # Analysis
-    with tab1:
-        st.json(result.get("analysis"))
+                excel = to_excel(result.get("test_cases", []))
+                # Lấy title test case đầu tiên làm tên feature
+                feature_name = "testcase"
 
-    # TestCases
-    with tab2:
-        df = pd.DataFrame(result.get("test_cases", []))
-        st.dataframe(df)
+                if result.get("test_cases"):
+                    feature_name = result["test_cases"][0].get("title", "testcase")
 
-        excel = export_excel(result.get("test_cases", []))
-        st.download_button("📥 Download TestCases", excel, generate_filename())
+                    # Clean tên file
+                    feature_name = feature_name.replace(" ", "_")[:30]
 
-    # Test Data
-    with tab3:
-        testdata = result.get("test_data", [])
+                    # Ngày giờ
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-        if testdata:
-            td_df = pd.DataFrame(testdata)
-            st.dataframe(td_df)
+                    file_name = f"{feature_name}_{timestamp}.xlsx"
+                st.download_button(
+                    "📥 Download Excel",
+                    excel,
+                    file_name,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
 
-            json_bytes = json.dumps(testdata, indent=2).encode("utf-8")
+    except Exception as e:
+        # ❗ KHÔNG show lỗi chi tiết ra UI
+        st.error("❗ Lỗi xử lý. Vui lòng kiểm tra lại input.")
+        print(f"DEBUG ERROR: {e}")
 
-            st.download_button("📥 Download JSON", json_bytes, "test_data.json")
 
-            excel_td = export_testdata_excel(testdata)
-            st.download_button("📥 Download Excel", excel_td, "test_data.xlsx")
-        else:
-            st.warning("No test data generated")
-
-# ===============================
-# HISTORY
-# ===============================
+# ================= DISPLAY =================
 if st.session_state.history:
-    st.subheader("History")
+    res = st.session_state.get("selected_history")
 
-    for i, item in enumerate(reversed(st.session_state.history)):
-        with st.expander(f"Result {i+1}"):
+    if not isinstance(res, dict):
+        st.info("Please select a history item to view.")
+    else:
+        t1, t2 = st.tabs(["Test Cases", "Input"])
 
-            st.text(item.get("input", ""))
+        with t1:
+            if "test_cases" in res and res["test_cases"]:
+                df = pd.DataFrame(res["test_cases"])
+                st.dataframe(df)
+            else:
+                st.warning("No test cases available")
 
-            df = pd.DataFrame(item.get("test_cases", []))
-            st.dataframe(df)
-
-            excel = export_excel(item.get("test_cases", []))
-            st.download_button(
-                "📥 Download TestCases",
-                excel,
-                f"testcases_{i}.xlsx",
-                key=f"his_tc_{i}",
-            )
+        with t2:
+            st.write(res.get("input", "No input data"))

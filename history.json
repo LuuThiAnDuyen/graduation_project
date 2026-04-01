@@ -1,0 +1,1222 @@
+[
+  {
+    "id": "1774768026.0095189",
+    "input": "as a user i want to login \n",
+    "analysis": {
+      "user_story": "as a user i want to login",
+      "phan_tich_qa": {
+        "tác_nhân": [
+          {
+            "ten": "Người dùng",
+            "mo_ta": "Bất kỳ cá nhân nào muốn truy cập vào các tính năng hoặc dữ liệu riêng tư trên hệ thống mà yêu cầu xác thực."
+          }
+        ],
+        "chân_dung_người_dùng": {
+          "ten": "Nguyễn Văn A (Người dùng thông thường)",
+          "vai_tro": "Người dùng cuối của ứng dụng web/di động.",
+          "kinh_nghiem": "Có kinh nghiệm cơ bản trong việc sử dụng các ứng dụng trực tuyến, quen thuộc với quy trình đăng nhập.",
+          "dong_luc": "Muốn truy cập vào tài khoản cá nhân của mình để sử dụng các tính năng đặc biệt (ví dụ: xem hồ sơ, thực hiện giao dịch, truy cập nội dung riêng tư) hoặc tiếp tục phiên làm việc đã lưu.",
+          "mong_muon": "Quá trình đăng nhập nhanh chóng, an toàn, dễ hiểu và có thể khôi phục tài khoản nếu quên mật khẩu."
+        },
+        "mục_tiêu": {
+          "chinh": "Đăng nhập thành công vào hệ thống.",
+          "chi_tiet": "Sau khi đăng nhập, người dùng có thể truy cập các tính năng hoặc dữ liệu cá nhân chỉ dành cho người dùng đã xác thực."
+        },
+        "tiêu_chí_chấp_nhận": [
+          "AC1: Người dùng có thể nhập Tên đăng nhập (hoặc Email) và Mật khẩu vào các trường tương ứng trên form đăng nhập.",
+          "AC2: Khi người dùng nhấp vào nút 'Đăng nhập' với thông tin hợp lệ, hệ thống phải xác thực thành công và chuyển hướng người dùng đến trang đích đã định (ví dụ: trang chủ, trang hồ sơ).",
+          "AC3: Khi người dùng nhấp vào nút 'Đăng nhập' với thông tin không hợp lệ (sai Tên đăng nhập/Email hoặc Mật khẩu), hệ thống phải hiển thị thông báo lỗi rõ ràng và không tiết lộ thông tin chi tiết về lý do lỗi (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng').",
+          "AC4: Mật khẩu phải được hiển thị dưới dạng dấu sao hoặc chấm tròn trong trường nhập liệu và có tùy chọn 'Hiển thị mật khẩu'.",
+          "AC5: Form đăng nhập phải có liên kết 'Quên mật khẩu?' để người dùng có thể khôi phục tài khoản.",
+          "AC6: Form đăng nhập phải có liên kết 'Đăng ký' (nếu người dùng chưa có tài khoản).",
+          "AC7: Hệ thống phải có cơ chế ngăn chặn tấn công Brute-force (ví dụ: khóa tài khoản tạm thời sau nhiều lần đăng nhập sai liên tiếp, CAPTCHA).",
+          "AC8: Mật khẩu phải được mã hóa khi truyền tải qua mạng (ví dụ: sử dụng HTTPS) và lưu trữ trong cơ sở dữ liệu (ví dụ: sử dụng hash và salt).",
+          "AC9: Sau khi đăng nhập thành công, hệ thống phải tạo một phiên làm việc (session) hoặc token hợp lệ cho người dùng."
+        ],
+        "luồng_chính": [
+          "1. Người dùng truy cập trang/màn hình đăng nhập của ứng dụng.",
+          "2. Người dùng nhập Tên đăng nhập (hoặc Email) vào trường 'Tên đăng nhập/Email'.",
+          "3. Người dùng nhập Mật khẩu vào trường 'Mật khẩu'.",
+          "4. Người dùng nhấp vào nút 'Đăng nhập'.",
+          "5. Hệ thống gửi yêu cầu xác thực thông tin đăng nhập đến backend.",
+          "6. Backend kiểm tra thông tin Tên đăng nhập và Mật khẩu với dữ liệu lưu trữ.",
+          "7. Nếu thông tin hợp lệ, backend phản hồi thành công.",
+          "8. Ứng dụng tạo phiên làm việc/token cho người dùng và lưu trữ (ví dụ: cookie, local storage).",
+          "9. Ứng dụng chuyển hướng người dùng đến trang đích sau đăng nhập thành công."
+        ],
+        "các_trường_hợp_biên": [
+          {
+            "tên": "Đăng nhập không thành công - Thông tin không hợp lệ",
+            "mô_tả": "Người dùng nhập sai Tên đăng nhập/Email hoặc Mật khẩu.",
+            "kết_quả_mong_muốn": "Hệ thống hiển thị thông báo lỗi chung chung (không tiết lộ lỗi cụ thể) và giữ người dùng ở lại trang đăng nhập."
+          },
+          {
+            "tên": "Đăng nhập không thành công - Trường bị bỏ trống",
+            "mô_tả": "Người dùng cố gắng đăng nhập khi một hoặc cả hai trường (Tên đăng nhập/Email, Mật khẩu) bị bỏ trống.",
+            "kết_quả_mong_muốn": "Hệ thống hiển thị thông báo lỗi yêu cầu điền đầy đủ thông tin vào các trường bắt buộc."
+          },
+          {
+            "tên": "Đăng nhập không thành công - Tài khoản bị khóa",
+            "mô_tả": "Tài khoản của người dùng bị khóa do nhập sai mật khẩu quá nhiều lần hoặc do quản trị viên khóa.",
+            "kết_quả_mong_muốn": "Hệ thống hiển thị thông báo rằng tài khoản đã bị khóa và hướng dẫn cách khôi phục (ví dụ: liên hệ hỗ trợ hoặc chờ đợi)."
+          },
+          {
+            "tên": "Đăng nhập không thành công - Tài khoản chưa tồn tại",
+            "mô_tả": "Người dùng cố gắng đăng nhập bằng Tên đăng nhập/Email chưa được đăng ký trong hệ thống.",
+            "kết_quả_mong_muốn": "Hệ thống hiển thị thông báo lỗi chung chung về thông tin đăng nhập không hợp lệ, hoặc gợi ý đăng ký."
+          },
+          {
+            "tên": "Đăng nhập không thành công - Lỗi kết nối mạng",
+            "mô_tả": "Mất kết nối internet hoặc lỗi mạng trong quá trình gửi yêu cầu đăng nhập.",
+            "kết_quả_mong_muốn": "Hệ thống hiển thị thông báo lỗi kết nối mạng và yêu cầu người dùng thử lại."
+          },
+          {
+            "tên": "Đăng nhập thành công - Chế độ 'Nhớ tôi'",
+            "mô_tả": "Người dùng chọn tùy chọn 'Nhớ tôi' (hoặc 'Ghi nhớ đăng nhập') trước khi đăng nhập.",
+            "kết_quả_mong_muốn": "Hệ thống lưu lại thông tin đăng nhập (ví dụ: bằng cookie có thời hạn dài) để người dùng không phải đăng nhập lại trong lần truy cập tiếp theo (trong một khoảng thời gian nhất định)."
+          },
+          {
+            "tên": "Đăng nhập khi đã đăng nhập",
+            "mô_tả": "Người dùng cố gắng truy cập trang đăng nhập khi họ đã được xác thực và có phiên làm việc hợp lệ.",
+            "kết_quả_mong_muốn": "Hệ thống tự động chuyển hướng người dùng đến trang đích hoặc trang chủ, không hiển thị lại form đăng nhập."
+          },
+          {
+            "tên": "Đăng nhập với các thiết bị khác nhau",
+            "mô_tả": "Người dùng đăng nhập trên nhiều thiết bị hoặc trình duyệt cùng lúc.",
+            "kết_quả_mong_muốn": "Hệ thống cho phép duy trì các phiên đăng nhập độc lập trên các thiết bị/trình duyệt khác nhau (hoặc có cơ chế thông báo/quản lý phiên đăng nhập nếu có yêu cầu an ninh cao hơn)."
+          },
+          {
+            "tên": "Phiên làm việc hết hạn",
+            "mô_tả": "Người dùng không hoạt động trong một khoảng thời gian và phiên làm việc của họ hết hạn.",
+            "kết_quả_mong_muốn": "Người dùng bị đăng xuất tự động và được yêu cầu đăng nhập lại khi cố gắng truy cập các tính năng yêu cầu xác thực."
+          }
+        ],
+        "các_giả_định": [
+          "ASS1: Người dùng đã có một tài khoản hợp lệ (Tên đăng nhập/Email và Mật khẩu) được đăng ký trong hệ thống.",
+          "ASS2: Người dùng biết Tên đăng nhập/Email và Mật khẩu chính xác của mình.",
+          "ASS3: Backend API hoặc dịch vụ xác thực đang hoạt động và có thể xử lý yêu cầu đăng nhập.",
+          "ASS4: Cơ sở dữ liệu người dùng đang hoạt động và có thể truy vấn để xác thực thông tin.",
+          "ASS5: Có một trang/màn hình đăng nhập đã được thiết kế và triển khai với các trường nhập liệu và nút 'Đăng nhập'.",
+          "ASS6: Hệ thống có cơ chế tạo và quản lý phiên làm việc (session) hoặc token sau khi đăng nhập thành công."
+        ]
+      }
+    },
+    "test_cases": [
+      {
+        "id": "TC_001",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh người dùng có thể đăng nhập thành công vào hệ thống với thông tin tài khoản hợp lệ (Tên đăng nhập và Mật khẩu).",
+        "pre_condition": "Người dùng đã có tài khoản hợp lệ (ví dụ: Tên đăng nhập: 'testuser', Mật khẩu: 'Password123') và truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập (hoặc Email) hợp lệ vào trường 'Tên đăng nhập/Email'.",
+          "3. Nhập Mật khẩu hợp lệ vào trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống xác thực thành công, tạo phiên làm việc hợp lệ và chuyển hướng người dùng đến trang đích đã định (ví dụ: Trang chủ, Trang hồ sơ cá nhân).",
+        "priority": "Cao"
+      },
+      {
+        "id": "TC_002",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống xử lý khi người dùng nhập Tên đăng nhập/Email không tồn tại hoặc sai.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email không tồn tại (ví dụ: 'nonexistent@example.com') vào trường 'Tên đăng nhập/Email'.",
+          "3. Nhập Mật khẩu bất kỳ (ví dụ: 'wrongpassword') vào trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi chung chung về thông tin đăng nhập không hợp lệ (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng') và giữ người dùng ở lại màn hình Đăng nhập.",
+        "priority": "Cao"
+      },
+      {
+        "id": "TC_003",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống xử lý khi người dùng nhập sai Mật khẩu cho một tài khoản hợp lệ.",
+        "pre_condition": "Người dùng đã có tài khoản hợp lệ (ví dụ: Tên đăng nhập: 'testuser') và truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email hợp lệ (ví dụ: 'testuser') vào trường 'Tên đăng nhập/Email'.",
+          "3. Nhập Mật khẩu không đúng (ví dụ: 'wrongpassword') vào trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi chung chung về thông tin đăng nhập không hợp lệ (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng') và giữ người dùng ở lại màn hình Đăng nhập.",
+        "priority": "Cao"
+      },
+      {
+        "id": "TC_004",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi trường 'Tên đăng nhập/Email' bị bỏ trống.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Để trống trường 'Tên đăng nhập/Email'.",
+          "3. Nhập Mật khẩu bất kỳ (ví dụ: 'Password123') vào trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập Tên đăng nhập/Email (ví dụ: 'Vui lòng nhập Tên đăng nhập/Email' hoặc 'Trường này không được để trống') và không thực hiện đăng nhập.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_005",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi trường 'Mật khẩu' bị bỏ trống.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email hợp lệ (hoặc bất kỳ) vào trường 'Tên đăng nhập/Email'.",
+          "3. Để trống trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập Mật khẩu (ví dụ: 'Vui lòng nhập Mật khẩu' hoặc 'Trường này không được để trống') và không thực hiện đăng nhập.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_006",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi cả hai trường 'Tên đăng nhập/Email' và 'Mật khẩu' đều bị bỏ trống.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Để trống cả trường 'Tên đăng nhập/Email' và 'Mật khẩu'.",
+          "3. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập cả Tên đăng nhập/Email và Mật khẩu (có thể là hai thông báo riêng biệt hoặc một thông báo chung) và không thực hiện đăng nhập.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_007",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh chức năng bật/tắt hiển thị mật khẩu hoạt động đúng.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Mật khẩu (ví dụ: 'MySecretPassword') vào trường 'Mật khẩu'.",
+          "3. Quan sát trường 'Mật khẩu'.",
+          "4. Nhấp vào biểu tượng 'Hiển thị mật khẩu' (ví dụ: biểu tượng mắt) bên cạnh trường mật khẩu.",
+          "5. Nhấp lại vào biểu tượng 'Hiển thị mật khẩu'."
+        ],
+        "expected_result": "Bước 3: Mật khẩu hiển thị dưới dạng dấu sao hoặc chấm tròn. Bước 4: Mật khẩu hiển thị rõ ràng dạng văn bản ('MySecretPassword'). Bước 5: Mật khẩu trở lại dạng dấu sao hoặc chấm tròn.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_008",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh liên kết 'Quên mật khẩu?' trên form đăng nhập hoạt động đúng.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhấp vào liên kết 'Quên mật khẩu?'."
+        ],
+        "expected_result": "Hệ thống chuyển hướng người dùng đến trang 'Khôi phục mật khẩu' hoặc 'Đặt lại mật khẩu'.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_009",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh liên kết 'Đăng ký' (hoặc tương đương) trên form đăng nhập hoạt động đúng.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhấp vào liên kết 'Đăng ký' (hoặc 'Tạo tài khoản mới')."
+        ],
+        "expected_result": "Hệ thống chuyển hướng người dùng đến trang 'Đăng ký tài khoản mới'.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_010",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh cơ chế ngăn chặn tấn công vét cạn (Brute-force) khi tài khoản bị khóa.",
+        "pre_condition": "Người dùng có một tài khoản hợp lệ (ví dụ: 'lockeduser'). Tài khoản này đã bị khóa do nhập sai mật khẩu quá số lần quy định hoặc do quản trị viên khóa.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email của tài khoản đã bị khóa (ví dụ: 'lockeduser').",
+          "3. Nhập Mật khẩu (đúng hoặc sai) vào trường 'Mật khẩu'.",
+          "4. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi rõ ràng rằng tài khoản đã bị khóa (ví dụ: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được trợ giúp' hoặc 'Tài khoản tạm thời bị khóa do nhiều lần đăng nhập sai').",
+        "priority": "Cao"
+      },
+      {
+        "id": "TC_011",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống xử lý lỗi kết nối mạng trong quá trình gửi yêu cầu đăng nhập.",
+        "pre_condition": "Người dùng truy cập vào màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email hợp lệ.",
+          "3. Nhập Mật khẩu hợp lệ.",
+          "4. Ngắt kết nối mạng (ví dụ: tắt Wi-Fi hoặc dữ liệu di động) trên thiết bị kiểm thử.",
+          "5. Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi liên quan đến kết nối mạng (ví dụ: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn và thử lại.')",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_012",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh chức năng 'Nhớ tôi' (Remember Me) hoạt động đúng.",
+        "pre_condition": "Người dùng có tài khoản hợp lệ. Truy cập màn hình Đăng nhập.",
+        "steps": [
+          "1. Truy cập vào trang/màn hình Đăng nhập của ứng dụng.",
+          "2. Nhập Tên đăng nhập/Email hợp lệ (ví dụ: 'testuser').",
+          "3. Nhập Mật khẩu hợp lệ (ví dụ: 'Password123').",
+          "4. Tích chọn ô 'Nhớ tôi' (hoặc 'Ghi nhớ đăng nhập').",
+          "5. Nhấp vào nút 'Đăng nhập'.",
+          "6. Đăng xuất khỏi hệ thống (nếu có tùy chọn) hoặc đóng trình duyệt/ứng dụng hoàn toàn.",
+          "7. Mở lại trình duyệt/ứng dụng và truy cập lại trang Đăng nhập."
+        ],
+        "expected_result": "Bước 5: Đăng nhập thành công và chuyển hướng đến trang đích. Bước 7: Người dùng được tự động đăng nhập lại hoặc các trường Tên đăng nhập/Email và/hoặc Mật khẩu đã được điền sẵn (tùy thuộc vào cách triển khai).",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_013",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hành vi của hệ thống khi người dùng cố gắng truy cập trang Đăng nhập trong khi đã đăng nhập.",
+        "pre_condition": "Người dùng đã đăng nhập thành công vào hệ thống và có một phiên làm việc hợp lệ.",
+        "steps": [
+          "1. Sau khi đăng nhập thành công, cố gắng truy cập lại URL của trang Đăng nhập (hoặc nhấp vào liên kết dẫn đến trang Đăng nhập, nếu có)."
+        ],
+        "expected_result": "Hệ thống tự động chuyển hướng người dùng đến trang đích (ví dụ: Trang chủ hoặc Trang hồ sơ cá nhân) hoặc một trang thông báo rằng người dùng đã đăng nhập, không hiển thị lại form Đăng nhập.",
+        "priority": "Thấp"
+      },
+      {
+        "id": "TC_014",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh hệ thống yêu cầu đăng nhập lại khi phiên làm việc của người dùng hết hạn.",
+        "pre_condition": "Người dùng đã đăng nhập thành công. Phiên làm việc được cấu hình có thời gian hết hạn nhất định (ví dụ: 15-30 phút không hoạt động).",
+        "steps": [
+          "1. Đăng nhập thành công vào hệ thống.",
+          "2. Để yên hệ thống mà không thực hiện bất kỳ hoạt động nào cho đến khi thời gian phiên làm việc hết hạn.",
+          "3. Cố gắng truy cập một trang/tính năng yêu cầu xác thực trong hệ thống."
+        ],
+        "expected_result": "Hệ thống tự động đăng xuất người dùng và yêu cầu người dùng đăng nhập lại, hoặc chuyển hướng về màn hình Đăng nhập với thông báo 'Phiên làm việc của bạn đã hết hạn, vui lòng đăng nhập lại'.",
+        "priority": "Trung bình"
+      },
+      {
+        "id": "TC_015",
+        "feature": "Đăng nhập",
+        "screen": "Màn hình Đăng nhập",
+        "description": "Xác minh khả năng đăng nhập đồng thời bằng cùng một tài khoản trên nhiều thiết bị/trình duyệt.",
+        "pre_condition": "Người dùng có tài khoản hợp lệ (ví dụ: 'multi_device_user').",
+        "steps": [
+          "1. Đăng nhập vào hệ thống bằng tài khoản 'multi_device_user' trên Thiết bị 1 (hoặc Trình duyệt 1).",
+          "2. Mở Thiết bị 2 (hoặc Trình duyệt 2) và truy cập trang Đăng nhập.",
+          "3. Đăng nhập vào hệ thống bằng cùng tài khoản 'multi_device_user' trên Thiết bị 2 (hoặc Trình duyệt 2)."
+        ],
+        "expected_result": "Hệ thống cho phép đăng nhập thành công trên Thiết bị 2 (hoặc Trình duyệt 2) mà không làm mất phiên đăng nhập trên Thiết bị 1 (hoặc Trình duyệt 1), hoặc có thông báo về phiên đăng nhập mới và cho phép tùy chọn quản lý (nếu có cơ chế bảo mật nâng cao).",
+        "priority": "Thấp"
+      }
+    ],
+    "test_data": [
+      {
+        "test_case_id": "TC_001",
+        "input_values": "Nhập Tên đăng nhập 'testuser', Mật khẩu 'Password123', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống xác thực thành công, tạo phiên làm việc hợp lệ và chuyển hướng người dùng đến trang đích đã định (ví dụ: Trang chủ, Trang hồ sơ cá nhân)."
+      },
+      {
+        "test_case_id": "TC_002",
+        "input_values": "Nhập Tên đăng nhập/Email 'nonexistent@example.com', Mật khẩu 'wrongpassword', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi chung chung về thông tin đăng nhập không hợp lệ (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng') và giữ người dùng ở lại màn hình Đăng nhập."
+      },
+      {
+        "test_case_id": "TC_003",
+        "input_values": "Nhập Tên đăng nhập/Email 'testuser', Mật khẩu 'wrongpassword', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi chung chung về thông tin đăng nhập không hợp lệ (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng') và giữ người dùng ở lại màn hình Đăng nhập."
+      },
+      {
+        "test_case_id": "TC_004",
+        "input_values": "Để trống trường 'Tên đăng nhập/Email', nhập Mật khẩu 'Password123', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập Tên đăng nhập/Email (ví dụ: 'Vui lòng nhập Tên đăng nhập/Email' hoặc 'Trường này không được để trống') và không thực hiện đăng nhập."
+      },
+      {
+        "test_case_id": "TC_005",
+        "input_values": "Nhập Tên đăng nhập/Email bất kỳ (ví dụ: 'anyuser'), để trống trường 'Mật khẩu', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập Mật khẩu (ví dụ: 'Vui lòng nhập Mật khẩu' hoặc 'Trường này không được để trống') và không thực hiện đăng nhập."
+      },
+      {
+        "test_case_id": "TC_006",
+        "input_values": "Để trống cả trường 'Tên đăng nhập/Email' và 'Mật khẩu', sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập cả Tên đăng nhập/Email và Mật khẩu (có thể là hai thông báo riêng biệt hoặc một thông báo chung) và không thực hiện đăng nhập."
+      },
+      {
+        "test_case_id": "TC_007",
+        "input_values": "Nhập Mật khẩu 'MySecretPassword', nhấp biểu tượng 'Hiển thị mật khẩu' (mắt) để xem mật khẩu, sau đó nhấp lại để ẩn mật khẩu.",
+        "expected_result": "Mật khẩu ban đầu hiển thị dưới dạng dấu sao/chấm tròn. Sau khi nhấp lần 1, mật khẩu hiển thị rõ ràng dạng văn bản ('MySecretPassword'). Sau khi nhấp lần 2, mật khẩu trở lại dạng dấu sao/chấm tròn."
+      },
+      {
+        "test_case_id": "TC_008",
+        "input_values": "Nhấp vào liên kết 'Quên mật khẩu?'.",
+        "expected_result": "Hệ thống chuyển hướng người dùng đến trang 'Khôi phục mật khẩu' hoặc 'Đặt lại mật khẩu'."
+      },
+      {
+        "test_case_id": "TC_009",
+        "input_values": "Nhấp vào liên kết 'Đăng ký' (hoặc 'Tạo tài khoản mới').",
+        "expected_result": "Hệ thống chuyển hướng người dùng đến trang 'Đăng ký tài khoản mới'."
+      },
+      {
+        "test_case_id": "TC_010",
+        "input_values": "Nhập Tên đăng nhập/Email của tài khoản đã bị khóa (ví dụ: 'lockeduser'), Mật khẩu bất kỳ, sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi rõ ràng rằng tài khoản đã bị khóa (ví dụ: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ để được trợ giúp' hoặc 'Tài khoản tạm thời bị khóa do nhiều lần đăng nhập sai')."
+      },
+      {
+        "test_case_id": "TC_011",
+        "input_values": "Nhập Tên đăng nhập/Email hợp lệ và Mật khẩu hợp lệ. Ngắt kết nối mạng trên thiết bị, sau đó nhấp 'Đăng nhập'.",
+        "expected_result": "Hệ thống hiển thị thông báo lỗi liên quan đến kết nối mạng (ví dụ: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn và thử lại.')"
+      },
+      {
+        "test_case_id": "TC_012",
+        "input_values": "Đăng nhập với Tên đăng nhập 'testuser' và Mật khẩu 'Password123', tích chọn 'Nhớ tôi'. Đăng xuất/đóng ứng dụng, sau đó mở lại và truy cập trang Đăng nhập.",
+        "expected_result": "Người dùng được tự động đăng nhập lại hoặc các trường Tên đăng nhập/Email và/hoặc Mật khẩu đã được điền sẵn."
+      },
+      {
+        "test_case_id": "TC_013",
+        "input_values": "Sau khi đã đăng nhập thành công, cố gắng truy cập lại URL của trang Đăng nhập.",
+        "expected_result": "Hệ thống tự động chuyển hướng người dùng đến trang đích (ví dụ: Trang chủ hoặc Trang hồ sơ cá nhân) hoặc một trang thông báo rằng người dùng đã đăng nhập, không hiển thị lại form Đăng nhập."
+      },
+      {
+        "test_case_id": "TC_014",
+        "input_values": "Đăng nhập thành công vào hệ thống. Để yên hệ thống mà không hoạt động cho đến khi hết hạn phiên làm việc. Sau đó, cố gắng truy cập một trang/tính năng yêu cầu xác thực.",
+        "expected_result": "Hệ thống tự động đăng xuất người dùng và yêu cầu đăng nhập lại, hoặc chuyển hướng về màn hình Đăng nhập với thông báo 'Phiên làm việc của bạn đã hết hạn, vui lòng đăng nhập lại'."
+      },
+      {
+        "test_case_id": "TC_015",
+        "input_values": "Đăng nhập vào hệ thống bằng tài khoản 'multi_device_user' trên Thiết bị 1. Sau đó, đăng nhập lại bằng cùng tài khoản 'multi_device_user' trên Thiết bị 2.",
+        "expected_result": "Hệ thống cho phép đăng nhập thành công trên Thiết bị 2 mà không làm mất phiên đăng nhập trên Thiết bị 1, hoặc có thông báo về phiên đăng nhập mới và cho phép tùy chọn quản lý."
+      }
+    ],
+    "time": "14:07:06"
+  },
+  {
+    "id": "1774769526.2393575",
+    "input": "tôi muốn đăng nhập vào trang web mua sắm ",
+    "analysis": {
+      "user_story": "Tôi muốn đăng nhập vào trang web mua sắm.",
+      "analysis_date": "2023-10-27",
+      "analyzed_by": "Senior QA",
+      "actors": [
+        {
+          "name": "Người dùng (Khách hàng)",
+          "description": "Là cá nhân muốn truy cập vào tài khoản cá nhân của họ trên trang web mua sắm để thực hiện các giao dịch hoặc quản lý thông tin."
+        }
+      ],
+      "persona": {
+        "name": "Nguyễn Thị Lan Anh",
+        "age": 32,
+        "occupation": "Nhân viên văn phòng",
+        "tech_savviness": "Thành thạo công nghệ, thường xuyên mua sắm trực tuyến",
+        "goals": [
+          "Truy cập nhanh chóng vào giỏ hàng để hoàn tất mua sắm.",
+          "Kiểm tra trạng thái đơn hàng đã đặt.",
+          "Cập nhật thông tin cá nhân hoặc địa chỉ giao hàng.",
+          "Xem lại lịch sử mua sắm và các sản phẩm yêu thích."
+        ],
+        "pain_points": [
+          "Quên mật khẩu thường xuyên.",
+          "Quy trình đăng nhập phức tạp, nhiều bước.",
+          "Trang web đăng nhập chậm hoặc không ổn định.",
+          "Không nhận được thông báo lỗi rõ ràng khi đăng nhập sai."
+        ],
+        "description": "Chị Lan Anh là một người phụ nữ bận rộn, ưu tiên sự tiện lợi và nhanh chóng khi mua sắm trực tuyến. Chị mong muốn một trải nghiệm đăng nhập mượt mà, an toàn để tiết kiệm thời gian."
+      },
+      "goal": {
+        "primary_goal": "Người dùng muốn đăng nhập thành công vào trang web mua sắm để truy cập các tính năng cá nhân hóa như giỏ hàng, lịch sử đơn hàng, thông tin tài khoản và tiếp tục quá trình mua sắm.",
+        "business_value": "Tăng cường tỷ lệ chuyển đổi (conversion rate) bằng cách cho phép người dùng hoàn tất mua sắm, nâng cao trải nghiệm khách hàng và duy trì sự gắn bó của người dùng với nền tảng."
+      },
+      "acceptance_criteria": [
+        {
+          "id": "AC001",
+          "description": "Khi người dùng nhập đúng tên đăng nhập/email và mật khẩu hợp lệ, hệ thống phải đăng nhập thành công và chuyển hướng người dùng đến trang chủ/bảng điều khiển tài khoản cá nhân.",
+          "priority": "Must Have"
+        },
+        {
+          "id": "AC002",
+          "description": "Khi người dùng nhập sai tên đăng nhập/email hoặc mật khẩu, hệ thống phải hiển thị thông báo lỗi rõ ràng và thân thiện (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.') mà không tiết lộ thông tin cụ thể (tên đăng nhập hay mật khẩu sai).",
+          "priority": "Must Have"
+        },
+        {
+          "id": "AC003",
+          "description": "Hệ thống phải cung cấp liên kết 'Quên mật khẩu?' dễ nhìn, cho phép người dùng khởi tạo quy trình đặt lại mật khẩu.",
+          "priority": "Must Have"
+        },
+        {
+          "id": "AC004",
+          "description": "Nếu người dùng đã chọn 'Ghi nhớ tôi' (Remember Me) trong lần đăng nhập trước, hệ thống phải tự động điền thông tin đăng nhập hoặc giữ trạng thái đăng nhập trong một khoảng thời gian nhất định.",
+          "priority": "Should Have"
+        },
+        {
+          "id": "AC005",
+          "description": "Tất cả các giao tiếp liên quan đến đăng nhập phải được mã hóa (sử dụng HTTPS) để đảm bảo an toàn thông tin người dùng.",
+          "priority": "Must Have"
+        },
+        {
+          "id": "AC006",
+          "description": "Khi đăng nhập thành công, tên/email của người dùng hoặc biểu tượng avatar phải được hiển thị ở vị trí dễ thấy trên header của trang.",
+          "priority": "Should Have"
+        },
+        {
+          "id": "AC007",
+          "description": "Hệ thống phải có cơ chế bảo vệ chống lại các cuộc tấn công Brute-force (ví dụ: khóa tài khoản tạm thời sau nhiều lần đăng nhập sai liên tiếp).",
+          "priority": "Must Have"
+        }
+      ],
+      "main_flow": [
+        {
+          "step": 1,
+          "action": "Người dùng truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản."
+        },
+        {
+          "step": 2,
+          "action": "Hệ thống hiển thị trang/pop-up đăng nhập với các trường 'Tên đăng nhập/Email' và 'Mật khẩu'."
+        },
+        {
+          "step": 3,
+          "action": "Người dùng nhập tên đăng nhập/email hợp lệ vào trường tương ứng."
+        },
+        {
+          "step": 4,
+          "action": "Người dùng nhập mật khẩu hợp lệ vào trường tương ứng."
+        },
+        {
+          "step": 5,
+          "action": "Người dùng có thể tùy chọn chọn 'Ghi nhớ tôi' (nếu có)."
+        },
+        {
+          "step": 6,
+          "action": "Người dùng nhấp vào nút 'Đăng nhập'."
+        },
+        {
+          "step": 7,
+          "action": "Hệ thống xác thực thông tin đăng nhập của người dùng với cơ sở dữ liệu."
+        },
+        {
+          "step": 8,
+          "action": "Nếu thông tin hợp lệ, hệ thống tạo phiên đăng nhập và chuyển hướng người dùng đến trang chủ/bảng điều khiển cá nhân."
+        }
+      ],
+      "edge_cases": [
+        {
+          "id": "EC001",
+          "scenario": "Đăng nhập với tên đăng nhập/email không tồn tại.",
+          "expected_behavior": "Hiển thị thông báo lỗi 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (AC002)."
+        },
+        {
+          "id": "EC002",
+          "scenario": "Đăng nhập với mật khẩu sai.",
+          "expected_behavior": "Hiển thị thông báo lỗi 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (AC002)."
+        },
+        {
+          "id": "EC003",
+          "scenario": "Đăng nhập với cả tên đăng nhập/email và mật khẩu sai.",
+          "expected_behavior": "Hiển thị thông báo lỗi 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (AC002)."
+        },
+        {
+          "id": "EC004",
+          "scenario": "Tài khoản bị khóa do nhập sai mật khẩu nhiều lần.",
+          "expected_behavior": "Hiển thị thông báo lỗi 'Tài khoản của bạn đã bị khóa tạm thời do nhiều lần đăng nhập không thành công. Vui lòng thử lại sau X phút hoặc đặt lại mật khẩu.' (AC007)."
+        },
+        {
+          "id": "EC005",
+          "scenario": "Người dùng cố gắng đăng nhập vào một tài khoản đã bị vô hiệu hóa/xóa.",
+          "expected_behavior": "Hiển thị thông báo lỗi 'Tài khoản này không còn hoạt động. Vui lòng liên hệ hỗ trợ.'."
+        },
+        {
+          "id": "EC006",
+          "scenario": "Người dùng nhấp vào 'Quên mật khẩu' nhưng nhập email không tồn tại.",
+          "expected_behavior": "Thông báo 'Không tìm thấy tài khoản với email này. Vui lòng kiểm tra lại hoặc đăng ký.'."
+        },
+        {
+          "id": "EC007",
+          "scenario": "Người dùng không có kết nối internet khi cố gắng đăng nhập.",
+          "expected_behavior": "Trình duyệt hiển thị lỗi kết nối hoặc trang không tải được."
+        },
+        {
+          "id": "EC008",
+          "scenario": "Người dùng đã đăng nhập và cố gắng truy cập lại trang đăng nhập.",
+          "expected_behavior": "Hệ thống nên chuyển hướng về trang chủ/bảng điều khiển hoặc hiển thị thông báo đã đăng nhập."
+        },
+        {
+          "id": "EC009",
+          "scenario": "Đăng nhập với dữ liệu đầu vào chứa các ký tự đặc biệt/SQL Injection/XSS.",
+          "expected_behavior": "Hệ thống phải xử lý an toàn các ký tự đặc biệt, ngăn chặn các cuộc tấn công và không làm ảnh hưởng đến chức năng."
+        },
+        {
+          "id": "EC010",
+          "scenario": "Người dùng đăng nhập từ nhiều thiết bị/trình duyệt khác nhau cùng một lúc.",
+          "expected_behavior": "Hệ thống cho phép đăng nhập đồng thời (hoặc có chính sách cảnh báo/giới hạn nếu cần cho các ứng dụng nhạy cảm hơn)."
+        }
+      ],
+      "assumptions": [
+        {
+          "id": "AS001",
+          "description": "Người dùng đã có tài khoản tồn tại trên hệ thống của trang web mua sắm.",
+          "impact_if_false": "Người dùng sẽ không thể đăng nhập và cần phải đăng ký tài khoản mới."
+        },
+        {
+          "id": "AS002",
+          "description": "Trang web mua sắm đang hoạt động ổn định và có thể truy cập được.",
+          "impact_if_false": "Chức năng đăng nhập sẽ không thể hoạt động."
+        },
+        {
+          "id": "AS003",
+          "description": "Người dùng có kết nối internet ổn định.",
+          "impact_if_false": "Người dùng không thể kết nối đến máy chủ đăng nhập."
+        },
+        {
+          "id": "AS004",
+          "description": "Trình duyệt của người dùng tương thích và không chặn các script cần thiết cho chức năng đăng nhập.",
+          "impact_if_false": "Giao diện hoặc chức năng đăng nhập có thể không hoạt động đúng cách."
+        },
+        {
+          "id": "AS005",
+          "description": "Hệ thống có cơ chế lưu trữ và xác thực mật khẩu an toàn (ví dụ: sử dụng hashing và salting).",
+          "impact_if_false": "Dữ liệu người dùng có nguy cơ bị lộ và ảnh hưởng đến bảo mật."
+        }
+      ]
+    },
+    "test_cases": [
+      {
+        "id": "TC_001",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh người dùng có thể đăng nhập thành công vào trang web mua sắm với email và mật khẩu hợp lệ.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com' và mật khẩu: 'Password123!'",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, nhập 'lananh@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập 'Password123!' vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Người dùng được đăng nhập thành công và được chuyển hướng đến trang chủ hoặc bảng điều khiển tài khoản cá nhân. Tên người dùng 'Lan Anh' hoặc biểu tượng avatar được hiển thị trên header của trang. (Tham chiếu: AC001, AC006)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_002",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi người dùng cố gắng đăng nhập với email không tồn tại.",
+        "pre_condition": "Không có tài khoản nào trên hệ thống với email: 'nonexistent@example.com'.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, nhập 'nonexistent@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu bất kỳ (ví dụ: 'anypassword123') vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC001)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_003",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi người dùng cố gắng đăng nhập với mật khẩu sai cho tài khoản tồn tại.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com'.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, nhập 'lananh@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu sai (ví dụ: 'wrongpassword!') vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC002)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_004",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hệ thống hiển thị thông báo lỗi khi người dùng cố gắng đăng nhập với cả email và mật khẩu sai.",
+        "pre_condition": "Không có tài khoản nào trên hệ thống với email: 'nonexistent@example.com'.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, nhập 'nonexistent@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu sai (ví dụ: 'wrongpassword!') vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC003)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_005",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh liên kết 'Quên mật khẩu?' trên trang đăng nhập hoạt động đúng cách.",
+        "pre_condition": "Trang đăng nhập hiển thị đầy đủ các thành phần chức năng.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, tìm và nhấp vào liên kết 'Quên mật khẩu?'."
+        ],
+        "expected_result": "Người dùng được chuyển hướng đến trang hoặc hiển thị pop-up 'Đặt lại mật khẩu' để bắt đầu quy trình khôi phục. (Tham chiếu: AC003)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_006",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh chức năng 'Ghi nhớ tôi' giữ lại thông tin đăng nhập hoặc trạng thái đăng nhập.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com' và mật khẩu: 'Password123!'. Trình duyệt đã bật chức năng lưu trữ cookie.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhập 'lananh@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập 'Password123!' vào trường 'Mật khẩu'.",
+          "Tích chọn hộp kiểm 'Ghi nhớ tôi'.",
+          "Nhấp vào nút 'Đăng nhập'.",
+          "Thực hiện đăng xuất (nếu cần thiết để kiểm tra tự động điền) hoặc đóng trình duyệt và mở lại sau một khoảng thời gian ngắn."
+        ],
+        "expected_result": "Khi truy cập lại trang đăng nhập (hoặc trang web), hệ thống tự động điền 'lananh@example.com' vào trường 'Tên đăng nhập/Email', hoặc người dùng vẫn duy trì trạng thái đăng nhập. (Tham chiếu: AC004)",
+        "priority": "Medium"
+      },
+      {
+        "id": "TC_007",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh cơ chế bảo vệ chống lại tấn công Brute-force bằng cách khóa tài khoản sau nhiều lần đăng nhập sai.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com'. Biết ngưỡng số lần đăng nhập sai (ví dụ: 5 lần) trước khi tài khoản bị khóa.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhập 'lananh@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu sai (ví dụ: 'wrongpass1') và nhấp 'Đăng nhập'. Lặp lại hành động này cho đến khi vượt quá ngưỡng đăng nhập sai (ví dụ: 5 lần).",
+          "Nhập mật khẩu sai lần thứ 6 và nhấp 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tài khoản của bạn đã bị khóa tạm thời do nhiều lần đăng nhập không thành công. Vui lòng thử lại sau X phút hoặc đặt lại mật khẩu.' (Tham chiếu: AC007, EC004)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_008",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hệ thống xử lý khi người dùng cố gắng đăng nhập vào tài khoản đã bị vô hiệu hóa/xóa.",
+        "pre_condition": "Có một tài khoản đã được thiết lập là vô hiệu hóa hoặc xóa trên hệ thống (ví dụ: email: 'disabled@example.com', mật khẩu: 'ValidPass123!').",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Trên trang/pop-up đăng nhập, nhập 'disabled@example.com' vào trường 'Tên đăng nhập/Email'.",
+          "Nhập 'ValidPass123!' vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tài khoản này không còn hoạt động. Vui lòng liên hệ hỗ trợ.' (Tham chiếu: EC005)",
+        "priority": "Medium"
+      },
+      {
+        "id": "TC_009",
+        "feature": "Quên mật khẩu",
+        "screen": "Trang Đặt lại Mật khẩu",
+        "description": "Xác minh hệ thống hiển thị thông báo phù hợp khi yêu cầu đặt lại mật khẩu cho email không tồn tại.",
+        "pre_condition": "Trang web đang hoạt động và có kết nối internet.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhấp vào liên kết 'Quên mật khẩu?'.",
+          "Trên trang/pop-up 'Đặt lại mật khẩu', nhập email không tồn tại (ví dụ: 'nonexistent@example.com') vào trường email khôi phục.",
+          "Nhấp vào nút 'Gửi' hoặc 'Đặt lại mật khẩu'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo: 'Không tìm thấy tài khoản với email này. Vui lòng kiểm tra lại hoặc đăng ký.' (Tham chiếu: EC006)",
+        "priority": "Medium"
+      },
+      {
+        "id": "TC_010",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hành vi của hệ thống khi người dùng đã đăng nhập cố gắng truy cập lại trang đăng nhập.",
+        "pre_condition": "Người dùng đã đăng nhập thành công vào tài khoản 'lananh@example.com'.",
+        "steps": [
+          "Sử dụng các bước từ TC_001 để đăng nhập thành công.",
+          "Trong khi vẫn đang đăng nhập, điều hướng đến URL của trang đăng nhập (ví dụ: '/login' hoặc nhấp lại nút 'Đăng nhập' nếu vẫn hiển thị)."
+        ],
+        "expected_result": "Hệ thống tự động chuyển hướng người dùng về trang chủ hoặc bảng điều khiển tài khoản cá nhân, hoặc hiển thị thông báo rằng người dùng đã đăng nhập. (Tham chiếu: EC008)",
+        "priority": "Low"
+      },
+      {
+        "id": "TC_011",
+        "feature": "Bảo mật Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh hệ thống xử lý an toàn các ký tự đặc biệt và ngăn chặn các cuộc tấn công tiêm mã (SQL/XSS) trong các trường đăng nhập.",
+        "pre_condition": "Trang đăng nhập hiển thị đầy đủ các thành phần chức năng.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhập một chuỗi tiềm ẩn nguy cơ SQL Injection (ví dụ: \"' OR '1'='1 --\") vào trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu hợp lệ (ví dụ: 'Password123!') vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'.",
+          "Lặp lại các bước với một chuỗi XSS (ví dụ: \"<script>alert('XSS')</script>\") vào trường 'Tên đăng nhập/Email' hoặc 'Mật khẩu'."
+        ],
+        "expected_result": "Hệ thống không thực thi mã độc, không gây ra lỗi ứng dụng hoặc thay đổi hành vi bất thường. Thay vào đó, nó hiển thị thông báo lỗi đăng nhập thông thường (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.') hoặc xử lý các ký tự đặc biệt một cách an toàn. Không có cảnh báo XSS nào xuất hiện. (Tham chiếu: EC009)",
+        "priority": "Critical"
+      },
+      {
+        "id": "TC_012",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh người dùng có thể đăng nhập đồng thời từ nhiều thiết bị/trình duyệt khác nhau.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com' và mật khẩu: 'Password123!'. Có sẵn 2 thiết bị/trình duyệt khác nhau để kiểm thử.",
+        "steps": [
+          "Trên Thiết bị/Trình duyệt A, thực hiện đăng nhập thành công tài khoản 'lananh@example.com'.",
+          "Trên Thiết bị/Trình duyệt B, thực hiện đăng nhập thành công tài khoản 'lananh@example.com'.",
+          "Kiểm tra trạng thái đăng nhập trên cả Thiết bị/Trình duyệt A và B."
+        ],
+        "expected_result": "Cả hai phiên đăng nhập trên Thiết bị/Trình duyệt A và B đều hoạt động bình thường mà không có phiên nào bị buộc đăng xuất hoặc gặp lỗi. (Tham chiếu: EC010)",
+        "priority": "Medium"
+      },
+      {
+        "id": "TC_013",
+        "feature": "Quên mật khẩu",
+        "screen": "Trang Đặt lại Mật khẩu",
+        "description": "Xác minh quy trình 'Quên mật khẩu' gửi email đặt lại mật khẩu thành công đến địa chỉ email hợp lệ.",
+        "pre_condition": "Người dùng đã có tài khoản trên hệ thống với email: 'lananh@example.com' và có quyền truy cập vào hộp thư đến của email này.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhấp vào liên kết 'Quên mật khẩu?'.",
+          "Trên trang/pop-up 'Đặt lại mật khẩu', nhập 'lananh@example.com' vào trường email khôi phục.",
+          "Nhấp vào nút 'Gửi' hoặc 'Đặt lại mật khẩu'.",
+          "Kiểm tra hộp thư đến của email 'lananh@example.com'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo xác nhận rằng email đặt lại mật khẩu đã được gửi. Một email chứa liên kết đặt lại mật khẩu hợp lệ (và an toàn) được nhận trong hộp thư đến của 'lananh@example.com'. (Tham chiếu: AC003)",
+        "priority": "High"
+      },
+      {
+        "id": "TC_014",
+        "feature": "Bảo mật Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh trang đăng nhập và quá trình truyền dữ liệu được bảo vệ bằng giao thức HTTPS.",
+        "pre_condition": "Trang đăng nhập có thể truy cập được.",
+        "steps": [
+          "Truy cập trang web mua sắm và điều hướng đến trang đăng nhập (hoặc mở pop-up đăng nhập).",
+          "Kiểm tra URL trong thanh địa chỉ của trình duyệt.",
+          "Kiểm tra biểu tượng khóa bảo mật trên thanh địa chỉ của trình duyệt."
+        ],
+        "expected_result": "URL của trang đăng nhập bắt đầu bằng 'https://'. Biểu tượng khóa bảo mật (ổ khóa) được hiển thị và không có cảnh báo bảo mật nào (ví dụ: 'Không an toàn', 'Kết nối không bảo mật'). (Tham chiếu: AC005)",
+        "priority": "Critical"
+      },
+      {
+        "id": "TC_015",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh các trường 'Tên đăng nhập/Email' và 'Mật khẩu' không chấp nhận giá trị trống.",
+        "pre_condition": "Trang đăng nhập hiển thị đầy đủ các thành phần chức năng.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Để trống cả trường 'Tên đăng nhập/Email' và 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu điền thông tin vào các trường bắt buộc (ví dụ: 'Vui lòng nhập tên đăng nhập/email', 'Vui lòng nhập mật khẩu').",
+        "priority": "High"
+      },
+      {
+        "id": "TC_016",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh trường 'Tên đăng nhập/Email' không chấp nhận giá trị trống.",
+        "pre_condition": "Trang đăng nhập hiển thị đầy đủ các thành phần chức năng.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Để trống trường 'Tên đăng nhập/Email'.",
+          "Nhập mật khẩu hợp lệ (ví dụ: 'Password123!') vào trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập tên đăng nhập/email (ví dụ: 'Vui lòng nhập tên đăng nhập/email').",
+        "priority": "High"
+      },
+      {
+        "id": "TC_017",
+        "feature": "Đăng nhập",
+        "screen": "Trang Đăng nhập",
+        "description": "Xác minh trường 'Mật khẩu' không chấp nhận giá trị trống.",
+        "pre_condition": "Trang đăng nhập hiển thị đầy đủ các thành phần chức năng.",
+        "steps": [
+          "Truy cập trang web mua sắm và nhấp vào nút 'Đăng nhập' hoặc biểu tượng tài khoản.",
+          "Nhập email hợp lệ (ví dụ: 'lananh@example.com') vào trường 'Tên đăng nhập/Email'.",
+          "Để trống trường 'Mật khẩu'.",
+          "Nhấp vào nút 'Đăng nhập'."
+        ],
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập mật khẩu (ví dụ: 'Vui lòng nhập mật khẩu').",
+        "priority": "High"
+      }
+    ],
+    "test_data": [
+      {
+        "test_case_id": "TC_001",
+        "input_values": {
+          "email": "lananh@example.com",
+          "password": "Password123!",
+          "action": "Nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Người dùng được đăng nhập thành công và được chuyển hướng đến trang chủ hoặc bảng điều khiển tài khoản cá nhân. Tên người dùng 'Lan Anh' hoặc biểu tượng avatar được hiển thị trên header của trang. (Tham chiếu: AC001, AC006)"
+      },
+      {
+        "test_case_id": "TC_002",
+        "input_values": {
+          "email": "nonexistent@example.com",
+          "password": "anypassword123",
+          "action": "Nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC001)"
+      },
+      {
+        "test_case_id": "TC_003",
+        "input_values": {
+          "email": "lananh@example.com",
+          "password": "wrongpassword!",
+          "action": "Nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC002)"
+      },
+      {
+        "test_case_id": "TC_004",
+        "input_values": {
+          "email": "nonexistent@example.com",
+          "password": "wrongpassword!",
+          "action": "Nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.' (Tham chiếu: AC002, EC003)"
+      },
+      {
+        "test_case_id": "TC_005",
+        "input_values": {
+          "action": "Nhấn liên kết 'Quên mật khẩu?'"
+        },
+        "expected_result": "Người dùng được chuyển hướng đến trang hoặc hiển thị pop-up 'Đặt lại mật khẩu' để bắt đầu quy trình khôi phục. (Tham chiếu: AC003)"
+      },
+      {
+        "test_case_id": "TC_006",
+        "input_values": {
+          "email": "lananh@example.com",
+          "password": "Password123!",
+          "remember_me_checkbox": "Đã chọn",
+          "action": "Nhấn nút 'Đăng nhập'",
+          "subsequent_action": "Đăng xuất hoặc đóng trình duyệt và mở lại"
+        },
+        "expected_result": "Khi truy cập lại trang đăng nhập (hoặc trang web), hệ thống tự động điền 'lananh@example.com' vào trường 'Tên đăng nhập/Email', hoặc người dùng vẫn duy trì trạng thái đăng nhập. (Tham chiếu: AC004)"
+      },
+      {
+        "test_case_id": "TC_007",
+        "input_values": {
+          "email": "lananh@example.com",
+          "wrong_password": "wrongpass1",
+          "login_attempts": 6,
+          "action": "Lặp lại đăng nhập sai 6 lần"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tài khoản của bạn đã bị khóa tạm thời do nhiều lần đăng nhập không thành công. Vui lòng thử lại sau X phút hoặc đặt lại mật khẩu.' (Tham chiếu: AC007, EC004)"
+      },
+      {
+        "test_case_id": "TC_008",
+        "input_values": {
+          "email": "disabled@example.com",
+          "password": "ValidPass123!",
+          "account_status": "Vô hiệu hóa/Đã xóa",
+          "action": "Nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi: 'Tài khoản này không còn hoạt động. Vui lòng liên hệ hỗ trợ.' (Tham chiếu: EC005)"
+      },
+      {
+        "test_case_id": "TC_009",
+        "input_values": {
+          "password_reset_email": "nonexistent@example.com",
+          "action": "Nhấn nút 'Gửi' hoặc 'Đặt lại mật khẩu'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo: 'Không tìm thấy tài khoản với email này. Vui lòng kiểm tra lại hoặc đăng ký.' (Tham chiếu: EC006)"
+      },
+      {
+        "test_case_id": "TC_010",
+        "input_values": {
+          "logged_in_user_email": "lananh@example.com",
+          "action": "Truy cập lại trang đăng nhập khi đã đăng nhập"
+        },
+        "expected_result": "Hệ thống tự động chuyển hướng người dùng về trang chủ hoặc bảng điều khiển tài khoản cá nhân, hoặc hiển thị thông báo rằng người dùng đã đăng nhập. (Tham chiếu: EC008)"
+      },
+      {
+        "test_case_id": "TC_011",
+        "input_values": {
+          "email_sql_injection": "' OR '1'='1 --",
+          "email_xss_payload": "<script>alert('XSS')</script>",
+          "password_valid": "Password123!",
+          "action": "Nhập và đăng nhập với các chuỗi độc hại"
+        },
+        "expected_result": "Hệ thống không thực thi mã độc, không gây ra lỗi ứng dụng hoặc thay đổi hành vi bất thường. Thay vào đó, nó hiển thị thông báo lỗi đăng nhập thông thường (ví dụ: 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.') hoặc xử lý các ký tự đặc biệt một cách an toàn. Không có cảnh báo XSS nào xuất hiện. (Tham chiếu: EC009)"
+      },
+      {
+        "test_case_id": "TC_012",
+        "input_values": {
+          "email": "lananh@example.com",
+          "password": "Password123!",
+          "login_device_A": "Thiết bị/Trình duyệt A",
+          "login_device_B": "Thiết bị/Trình duyệt B",
+          "action": "Đăng nhập đồng thời từ hai thiết bị/trình duyệt"
+        },
+        "expected_result": "Cả hai phiên đăng nhập trên Thiết bị/Trình duyệt A và B đều hoạt động bình thường mà không có phiên nào bị buộc đăng xuất hoặc gặp lỗi. (Tham chiếu: EC010)"
+      },
+      {
+        "test_case_id": "TC_013",
+        "input_values": {
+          "password_reset_email": "lananh@example.com",
+          "action": "Nhấn nút 'Gửi' hoặc 'Đặt lại mật khẩu'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo xác nhận rằng email đặt lại mật khẩu đã được gửi. Một email chứa liên kết đặt lại mật khẩu hợp lệ (và an toàn) được nhận trong hộp thư đến của 'lananh@example.com'. (Tham chiếu: AC003)"
+      },
+      {
+        "test_case_id": "TC_014",
+        "input_values": {
+          "action": "Kiểm tra giao thức URL và biểu tượng khóa bảo mật trên trang đăng nhập"
+        },
+        "expected_result": "URL của trang đăng nhập bắt đầu bằng 'https://'. Biểu tượng khóa bảo mật (ổ khóa) được hiển thị và không có cảnh báo bảo mật nào (ví dụ: 'Không an toàn', 'Kết nối không bảo mật'). (Tham chiếu: AC005)"
+      },
+      {
+        "test_case_id": "TC_015",
+        "input_values": {
+          "email": "",
+          "password": "",
+          "action": "Để trống cả hai trường và nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu điền thông tin vào các trường bắt buộc (ví dụ: 'Vui lòng nhập tên đăng nhập/email', 'Vui lòng nhập mật khẩu')."
+      },
+      {
+        "test_case_id": "TC_016",
+        "input_values": {
+          "email": "",
+          "password": "Password123!",
+          "action": "Để trống trường email và nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập tên đăng nhập/email (ví dụ: 'Vui lòng nhập tên đăng nhập/email')."
+      },
+      {
+        "test_case_id": "TC_017",
+        "input_values": {
+          "email": "lananh@example.com",
+          "password": "",
+          "action": "Để trống trường mật khẩu và nhấn nút 'Đăng nhập'"
+        },
+        "expected_result": "Hệ thống hiển thị thông báo lỗi yêu cầu nhập mật khẩu (ví dụ: 'Vui lòng nhập mật khẩu')."
+      }
+    ],
+    "time": "14:32:06"
+  },
+  {
+    "id": "1775059510.3320503",
+    "input": "as a user i want to search my order to see my order detail",
+    "test_cases": [
+      {
+        "id": "TC-ORDER-SEARCH-001",
+        "title": "Successful search for an existing order by valid Order ID/Number",
+        "description": "Verify that a logged-in user can successfully search for their own existing order using a valid Order ID or Order Number and view its details.",
+        "preconditions": [
+          "User is logged in.",
+          "User has at least one active order with a known unique Order ID/Number."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Enter a valid Order ID/Number (e.g., 'ORD12345') that belongs to the logged-in user into the search input field.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system displays the full detailed information of the matching order, including items, total, status, and shipping information."
+      },
+      {
+        "id": "TC-ORDER-SEARCH-002",
+        "title": "Attempt to search for a non-existent order",
+        "description": "Verify that the system correctly handles a search query for an Order ID/Number that does not exist in the system.",
+        "preconditions": [
+          "User is logged in."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Enter an Order ID/Number (e.g., 'NONEXISTENT123') that does not exist in the system into the search input field.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system displays a clear 'Order not found' message or similar, indicating that no order matches the provided ID/Number."
+      },
+      {
+        "id": "TC-ORDER-SEARCH-003",
+        "title": "Attempt to search with an empty query",
+        "description": "Verify that the system handles an attempt to search with an empty input field gracefully.",
+        "preconditions": [
+          "User is logged in."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Leave the search input field empty.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system displays a validation error message (e.g., 'Please enter an Order ID/Number' or 'Search field cannot be empty') and does not proceed with an empty search."
+      },
+      {
+        "id": "TC-ORDER-SEARCH-004",
+        "title": "Attempt to search for an order belonging to another user",
+        "description": "Verify that a user cannot access order details of another user, ensuring data privacy and security.",
+        "preconditions": [
+          "User A is logged in.",
+          "There is at least one active order with a known Order ID/Number (e.g., 'ORDERB456') that belongs to User B (a different user).",
+          "User A does NOT own order 'ORDERB456'."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Enter the Order ID/Number of User B's order (e.g., 'ORDERB456') into the search input field.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system displays a 'Order not found' or 'Access denied' message, preventing User A from viewing User B's order details. No sensitive information about User B's order should be revealed."
+      },
+      {
+        "id": "TC-ORDER-SEARCH-005",
+        "title": "Search with special characters or potentially harmful input",
+        "description": "Verify the system's robustness when handling input containing special characters, SQL injection attempts, or malformed Order IDs/Numbers.",
+        "preconditions": [
+          "User is logged in."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Enter special characters (e.g., '!@#$%^&') or a potentially harmful string (e.g., `<script>alert('XSS')</script>`, `' OR '1'='1`) into the search input field.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system either displays 'Order not found', a validation error for invalid characters/format, or gracefully handles the input without errors, security vulnerabilities, or unintended behavior."
+      },
+      {
+        "id": "TC-ORDER-SEARCH-006",
+        "title": "User with no existing orders attempts a search",
+        "description": "Verify the system's behavior when a user who has no prior orders associated with their account attempts to search for one.",
+        "preconditions": [
+          "User is logged in.",
+          "The logged-in user has no previous orders associated with their account."
+        ],
+        "steps": [
+          "Navigate to the 'Search Order' section.",
+          "Enter a syntactically valid (but non-existent) Order ID/Number (e.g., 'NOORDER000') into the search input field.",
+          "Click the 'Search' button or press Enter."
+        ],
+        "expected_result": "The system displays a 'Order not found' message, clearly indicating no order matches, and does not show any errors related to the user having no orders."
+      }
+    ],
+    "time": "23:05:10"
+  },
+  {
+    "id": "1775061218.95168",
+    "input": "as a user i want to search my order to see my order detail",
+    "test_cases": [
+      {
+        "id": "TC-ORDER-SEARCH-001",
+        "title": "Successful search and view of own order detail",
+        "description": "Verify that a logged-in user can successfully search for their own order using a valid order ID and view its complete details.",
+        "preconditions": [
+          "User is logged in.",
+          "At least one order exists for the logged-in user with a known Order ID."
+        ],
+        "steps": [
+          "Navigate to the order search page/feature.",
+          "Enter a valid Order ID belonging to the logged-in user into the search field.",
+          "Click the 'Search' button."
+        ],
+        "expected_result": "The system displays the detailed view of the searched order, showing all relevant information (e.g., Order ID, Status, Items, Price, Shipping Address, Billing Address, Payment Summary).",
+        "priority": "High",
+        "type": "Functional"
+      },
+      {
+        "id": "TC-ORDER-SEARCH-002",
+        "title": "Search for a non-existent order ID",
+        "description": "Verify that if a user searches for an order ID that does not exist in the system, an appropriate 'no results found' message is displayed.",
+        "preconditions": [
+          "User is logged in."
+        ],
+        "steps": [
+          "Navigate to the order search page/feature.",
+          "Enter a non-existent Order ID (e.g., 'INVALID123', a sequence not used) into the search field.",
+          "Click the 'Search' button."
+        ],
+        "expected_result": "The system displays a clear message indicating that no orders were found for the given search query (e.g., 'No orders found.', 'Order not found.').",
+        "priority": "High",
+        "type": "Functional"
+      },
+      {
+        "id": "TC-ORDER-SEARCH-003",
+        "title": "Attempt to search for another user's order",
+        "description": "Verify that a logged-in user cannot view the details of an order that does not belong to them, even if they know the Order ID.",
+        "preconditions": [
+          "User A is logged in.",
+          "User B has an order with a known Order ID (different from User A's orders)."
+        ],
+        "steps": [
+          "Log in as User A.",
+          "Navigate to the order search page/feature.",
+          "Enter a valid Order ID belonging to User B into the search field.",
+          "Click the 'Search' button."
+        ],
+        "expected_result": "The system displays a message indicating that no order was found for the logged-in user (e.g., 'No orders found for your account.', 'Order not found.'). The order details of User B must NOT be displayed.",
+        "priority": "High",
+        "type": "Security"
+      },
+      {
+        "id": "TC-ORDER-SEARCH-004",
+        "title": "Search with an empty query",
+        "description": "Verify the system's behavior when the user attempts to search with an empty search field.",
+        "preconditions": [
+          "User is logged in."
+        ],
+        "steps": [
+          "Navigate to the order search page/feature.",
+          "Leave the search field empty.",
+          "Click the 'Search' button."
+        ],
+        "expected_result": "The system displays a validation message prompting the user to enter a search term (e.g., 'Please enter an Order ID to search.') or if it's designed to show all user orders, it should display 'My Orders' list.",
+        "priority": "Medium",
+        "type": "Functional"
+      },
+      {
+        "id": "TC-ORDER-SEARCH-005",
+        "title": "Search with invalid format order ID",
+        "description": "Verify how the system handles search queries that do not conform to the expected format of an Order ID (e.g., special characters, too long/short, wrong data type).",
+        "preconditions": [
+          "User is logged in.",
+          "The system has a defined format for Order IDs (e.g., alphanumeric, specific length)."
+        ],
+        "steps": [
+          "Navigate to the order search page/feature.",
+          "Enter an Order ID that is syntactically invalid (e.g., '!@#$%^&*', 'ORD-', '12345678901234567890' if max length is 10).",
+          "Click the 'Search' button."
+        ],
+        "expected_result": "The system displays a validation message indicating the invalid format (e.g., 'Invalid Order ID format.', 'Order ID can only contain alphanumeric characters and must be X characters long.').",
+        "priority": "Medium",
+        "type": "Functional"
+      },
+      {
+        "id": "TC-ORDER-DETAIL-001",
+        "title": "Verify complete order detail display",
+        "description": "After a successful search, verify that all expected order details are correctly displayed on the order detail page.",
+        "preconditions": [
+          "User is logged in.",
+          "An order exists for the user with various details (multiple items, different statuses, shipping/billing info).",
+          "TC-ORDER-SEARCH-001 has been executed successfully, leading to the order detail page."
+        ],
+        "steps": [
+          "Perform a successful search for one of the user's orders (e.g., using steps from TC-ORDER-SEARCH-001).",
+          "On the displayed order detail page, review all presented information."
+        ],
+        "expected_result": "All relevant order details are displayed accurately and completely, including: Order ID, Order Date/Time, Order Status, List of ordered items (name, quantity, price), Subtotal, Shipping Cost, Tax, Discount (if any), Total Price, Shipping Address, Billing Address, and a summary of the Payment Method.",
+        "priority": "High",
+        "type": "Functional"
+      },
+      {
+        "id": "TC-ORDER-SECURITY-001",
+        "title": "Attempt to search/view orders when not logged in",
+        "description": "Verify that an unauthenticated user cannot access the order search or detail functionality and is prompted to log in.",
+        "preconditions": [
+          "User is NOT logged in."
+        ],
+        "steps": [
+          "Attempt to navigate directly to the order search page URL (if known).",
+          "Alternatively, if a 'Search Order' or 'My Orders' link is visible when unauthenticated, click it.",
+          "Attempt to search for an order ID."
+        ],
+        "expected_result": "The system redirects the user to the login/registration page, or displays a clear message prompting them to log in before they can search for or view order details. No order information should be accessible.",
+        "priority": "High",
+        "type": "Security"
+      }
+    ],
+    "time": "23:33:38"
+  }
+]

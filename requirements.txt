@@ -1,7 +1,7 @@
-fastapi
-uvicorn
-langchain
-openai
-pydantic
-python-dotenv
+streamlit
+pandas
 google-generativeai
+python-dotenv
+openpyxl
+python-docx
+pypdf
