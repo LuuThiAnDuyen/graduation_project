@@ -1,20 +1,11 @@
 """
 core/prompt_builder.py
 -----------------------
-Prompt engineering tập trung tại đây – không có business logic.
-
-Thay đổi v3:
-  • Bỏ BDD (Gherkin) và min_cases hoàn toàn
-  • MULTI-FEATURE DETECTION: LLM phải xử lý TỪNG feature, không bỏ sót
-  • COT ép LLM đếm feature → enumerate criteria → map từng cái thành TC
-  • Không giới hạn số TC — "as many as needed for 100% coverage"
+Default prompt builder - dùng cho Generator page (single prompt).
 """
 
 from __future__ import annotations
 
-# ─────────────────────────────────────────────────────────────────────────────
-# COVERAGE MATRIX
-# ─────────────────────────────────────────────────────────────────────────────
 _COVERAGE_TYPES = """
 Coverage checklist — apply ALL that are relevant, never skip Security or Boundary:
   [P]   Positive / Happy-path     – valid input, expected flow completes
@@ -27,10 +18,56 @@ Coverage checklist — apply ALL that are relevant, never skip Security or Bound
   [INT] Integration               – interaction between modules, APIs, third-party services
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PER-INPUT-TYPE PARSING INSTRUCTIONS
-# ─────────────────────────────────────────────────────────────────────────────
-_INPUT_TYPE_GUIDES: dict[str, str] = {
+_FEATURE_GROUP_RULES = """
+════ FEATURE GROUP RULES (CRITICAL — READ CAREFULLY) ════
+
+PRIORITY RULE — "Chức năng" sections:
+  If the requirement contains section headers like "Chức năng Đặt hàng",
+  "Chức năng Tìm kiếm sản phẩm", etc., you MUST use EXACTLY the name after
+  "Chức năng" as the feature_group for ALL test cases under that section.
+  Do NOT invent a different name.
+
+  Example:
+    "Chức năng Đặt hàng"               → feature_group = "Đặt hàng"
+    "Chức năng Tìm kiếm sản phẩm"      → feature_group = "Tìm kiếm sản phẩm"
+    "Chức năng Đăng nhập"               → feature_group = "Đăng nhập"
+    "Chức năng Quản lý sản phẩm yêu thích" → feature_group = "Quản lý sản phẩm yêu thích"
+
+  ALL US-1, US-2, US-3... under "Chức năng Đặt hàng"
+  → ALL get feature_group = "Đặt hàng" (not "User Login", not "Order", not "Checkout")
+
+GENERAL RULE — when no "Chức năng" header exists:
+  'feature_group' = the NAME OF THE MODULE / SCREEN / FUNCTIONAL AREA.
+  It is used as the Excel SHEET NAME — must represent a FUNCTION, not a test scenario.
+
+✅ CORRECT examples:
+  - "Đặt hàng"        ← từ "Chức năng Đặt hàng"
+  - "Đăng nhập"       ← từ "Chức năng Đăng nhập"
+  - "User Login"      ← module name khi không có "Chức năng"
+  - "Product Search"  ← module name khi không có "Chức năng"
+
+❌ WRONG — NEVER use these patterns:
+  - "Login Success"           ← test OUTCOME, not a module
+  - "Login Failure"           ← test OUTCOME, not a module
+  - "Login Validation"        ← test TYPE, not a module
+  - "Đăng nhập thành công"    ← test outcome in Vietnamese
+  - "Đăng nhập thất bại"      ← test outcome in Vietnamese
+  - "Positive Tests"          ← test category, not a module
+  - "Negative Tests"          ← test category, not a module
+  - "Order"                   ← translation of "Chức năng Đặt hàng" — WRONG, use "Đặt hàng"
+  - "Checkout"                ← invented name — WRONG, use exact name from "Chức năng"
+
+RULE: ALL test cases (positive, negative, boundary, security, edge) for the
+SAME functional module MUST share the EXACT SAME 'feature_group' string.
+
+  TC: Login with valid credentials  (P) → feature_group = "Đăng nhập"
+  TC: Login with wrong password     (N) → feature_group = "Đăng nhập"
+  TC: Login with SQL injection      (S) → feature_group = "Đăng nhập"
+  TC: Login with empty email        (E) → feature_group = "Đăng nhập"
+
+If the requirement contains only ONE functional area, ALL TCs share ONE feature_group.
+"""
+_INPUT_TYPE_GUIDES = {
     "User Story": """
 INPUT FORMAT: User Story  (As a / I want / So that + Acceptance Criteria)
 Parsing rules:
@@ -40,18 +77,20 @@ Parsing rules:
   • Benefit(So that …)    → implicit success criterion → add as Positive TC.
   • Acceptance Criteria   → EVERY numbered/bulleted criterion → ≥1 TC each, no exceptions.
   • Implicit rules to always add: required fields, max-length, format validation, role restriction.
-  • Do NOT merge criteria from different stories into one TC.
+  • FEATURE GROUP: assign 'feature_group' = the MODULE/SCREEN NAME derived from the user story goal.
+    Example: "I want to log in" → feature_group = "User Login" (NOT "Login Success" or "Login Failure")
+    Multiple acceptance criteria for the same story → ALL share the SAME feature_group.
 """,
     "Use Case Spec": """
-INPUT FORMAT: Use Case Specification  (Actor, Preconditions, Main Flow, Alternate Flows, Exceptions)
+INPUT FORMAT: Use Case Specification
 Parsing rules:
-  • Identify EVERY separate use case — each is a distinct feature block.
-  • Main Flow (Basic Path)        → Positive TC, step-by-step.
-  • Each Alternate Flow           → separate Positive or Negative TC.
-  • Each Exception / Error Flow   → Negative TC.
-  • Preconditions in spec         → copy verbatim as TC Precondition.
-  • Postconditions in spec        → use as Expected Result anchor.
-  • Extension points (e.g. "2a.") → Boundary or Edge TC.
+  • Main Flow → Positive TC step-by-step.
+  • Each Alternate Flow → separate Positive or Negative TC.
+  • Each Exception / Error Flow → Negative TC.
+  • Preconditions → copy verbatim as TC Precondition.
+  • FEATURE GROUP: assign 'feature_group' = the USE CASE NAME (e.g. "User Login", "Order Checkout").
+    ALL TCs from the same use case (main flow + alternate flows + exception flows) share ONE feature_group.
+    NEVER split by flow type: "Login Success" and "Login Failure" are WRONG.
 """,
     "Natural Language": """
 INPUT FORMAT: Free-form Natural Language description
@@ -59,35 +98,29 @@ Parsing rules:
   • Identify EVERY distinct feature, function, or business rule mentioned.
   • Extract: WHO does WHAT, under WHAT conditions, with WHAT outcome.
   • Identify all nouns that are data fields → candidate Boundary/Edge TCs.
-  • Identify all verbs that are actions     → candidate Positive/Negative TCs.
-  • Infer business rules from context (e.g. "only admin can…" → Security TC).
-  • When ambiguous: use the most conservative interpretation; note it in precondition.
-  • Do NOT invent requirements not present or clearly implied.
+  • Identify all verbs that are actions → candidate Positive/Negative TCs.
+  • FEATURE GROUP: assign 'feature_group' = the FEATURE/MODULE NAME (e.g. "User Login", "Product Search").
+    ALL TCs for the same feature (regardless of positive/negative/boundary) share ONE feature_group.
 """,
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OUTPUT SCHEMA
-# ─────────────────────────────────────────────────────────────────────────────
 _OUTPUT_SCHEMA = """
 Return ONLY a valid JSON object — NO markdown fences, NO text outside JSON.
 
 {
   "status": "SUCCESS" | "INPUT_AMBIGUOUS" | "ERROR",
   "reason": "<explain if not SUCCESS, else empty string>",
-  "feature_name": "<overall feature / project name, ≤8 words>",
+  "feature_name": "<overall feature name, ≤8 words>",
   "test_cases": [
     {
       "id": "TC-001",
+      "feature_group": "<MODULE/SCREEN name — e.g. 'User Login', 'Password Reset'. NEVER use outcome words like Success/Failure/Positive/Negative>",
       "title": "<concise imperative title>",
       "coverage_type": "<P|N|B|E|S|U|DB|INT>",
       "priority": "High | Medium | Low",
-      "precondition": "<system state and data required BEFORE execution>",
-      "steps": [
-        "<Step 1: concrete atomic UI or API action — subject + verb + object>",
-        "<Step 2>",
-        "... (3–8 steps)"
-      ],
+      "precondition": "<system state required BEFORE execution>",
+      "steps": ["<Step 1>", "<Step 2>", "... (3–8 steps)"],
+      "element_locator": "<per-step UI element name list — see format below>",
       "expected_result": "<observable, verifiable outcome>",
       "actual_result": "",
       "status_result": "",
@@ -100,279 +133,160 @@ Return ONLY a valid JSON object — NO markdown fences, NO text outside JSON.
     {
       "id": "TD-001",
       "description": "<what this data set is for>",
-      "data": {
-        "<field>": "<concrete value — never a placeholder>"
-      }
+      "data": { "<field>": "<concrete value — never a placeholder>" }
     }
   ]
 }
 
-FIELD RULES:
-  • actual_result  → ALWAYS ""  (tester fills in after execution)
-  • status_result  → ALWAYS ""  (tester fills Pass/Fail after execution)
-  • test_data_ref  → TD id of matching entry; "" if no specific data needed
-  • Every TC using specific data values MUST reference a TD entry
-  • Reuse the same TD id if two TCs share identical data
-  • db_query/db_expected: provide for DB-write features; else ""
+════ ELEMENT & LOCATOR FORMAT ════
+The "element_locator" field lists ONE UI element name per step, matching the step order.
+
+Format each line as a simple snake_case element name:
+  <element_name>
+
+Rules:
+  • One line per step, same count as steps array.
+  • Use descriptive snake_case names (e.g., email_input, password_input, login_button, submit_btn, error_message).
+  • If a step has NO UI interaction (e.g., "Verify database", "Navigate to URL"), write: N/A
+  • Separate lines with newline character \\n inside the string.
+  • Keep names short and clear — just the element name, nothing else.
+
+Example for a 4-step login TC:
+  "element_locator": "N/A\\nemail_input\\npassword_input\\nlogin_button"
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CHAIN-OF-THOUGHT — FORCES EXHAUSTIVE PER-FEATURE COVERAGE
-# ─────────────────────────────────────────────────────────────────────────────
-_COT_INSTRUCTION = """
-MANDATORY INTERNAL REASONING — complete ALL 7 steps before writing JSON:
-
-  STEP 1 — FEATURE DETECTION
-    • Read the entire input.
-    • Count and list every distinct feature / user story / use case.
-    • Label them F1, F2, F3, … (e.g. F1=Login, F2=Register, F3=Forgot Password).
-    • You MUST produce test cases for EVERY feature — missing one is a critical failure.
-
-  STEP 2 — CRITERIA EXTRACTION  (for each feature Fi)
-    • List every EXPLICIT acceptance criterion.
-    • List every IMPLICIT rule: required fields, max/min length, format, role restriction,
-      uniqueness constraint, state machine transition (e.g. "locked account").
-    • Label each: F1-C1, F1-C2, F2-C1, …
-
-  STEP 3 — BOUNDARY ANALYSIS  (for each feature Fi)
-    • For every numeric field       : min, max, min-1, max+1.
-    • For every string/text field   : empty string, 1 char, max length, max+1 length.
-    • For every enum / dropdown     : each valid option + at least one invalid value.
-    • For every date/time field     : past, present, future, invalid format.
-
-  STEP 4 — SECURITY ANALYSIS
-    • Every field accepting free text → SQL injection TC + XSS TC.
-    • Every action gated by role/auth → auth bypass TC + IDOR TC if applicable.
-
-  STEP 5 — TEST CASE PLANNING
-    • Each criterion Fi-Cj → ≥1 TC. Never bundle two criteria into one TC.
-    • Each boundary value  → 1 dedicated TC.
-    • Each security concern→ 1 dedicated TC.
-    • Coverage types P, N, B, E, S must ALL appear across the full suite.
-    • Order: High priority first, then Medium, then Low.
-    • Assign sequential IDs: TC-001, TC-002, … with no gaps.
-
-  STEP 6 — TEST DATA PLANNING
-    • For each TC using specific values: create a TD entry with REAL values.
-    • TD ids: TD-001, TD-002, … — reuse if data is identical across TCs.
-
-  STEP 7 — SELF-CHECK  (before writing JSON)
-    Answer each question — if the answer is NO, add the missing TCs before proceeding:
-    ✓ Every feature Fi has at least one TC?
-    ✓ Every acceptance criterion Fi-Cj has at least one dedicated TC?
-    ✓ Every boundary condition has a TC?
-    ✓ Every free-text input field has a Security TC?
-    ✓ actual_result and status_result are "" in every TC?
-
-  THEN — produce ONLY the JSON object. Do not output the reasoning.
+_COT = """
+MANDATORY INTERNAL REASONING:
+  STEP 1 — List every distinct FUNCTIONAL MODULE (screen/feature area) in the requirement.
+            Example: "User Login", "Password Reset", "Profile Update"
+            ⚠️ Do NOT split by outcome: "Login Success" / "Login Failure" are NOT modules.
+  STEP 2 — For each MODULE: list explicit + implicit acceptance criteria.
+  STEP 3 — Boundary analysis: min, max, min-1, max+1 for every numeric/string field.
+  STEP 4 — Security: every free-text field → SQLi + XSS TC; every role-gated action → auth bypass TC.
+  STEP 5 — Assign sequential IDs: TC-001, TC-002, …  TD-001, TD-002, …
+  STEP 6 — Assign 'feature_group' to each TC = the MODULE NAME from STEP 1.
+            ALL TC types (P/N/B/E/S/U/DB/INT) for the same module → SAME feature_group string.
+  STEP 7 — For each TC, map every step to its UI element name (snake_case).
+  STEP 8 — Self-check:
+            • Every feature has ≥1 TC of each relevant type?
+            • feature_group values are MODULE NAMES only (no outcome/type words)?
+            • All TCs for same module share EXACT SAME feature_group string?
+            • actual_result="" in every TC?
+            • element_locator line count = steps count?
+  THEN write ONLY the JSON.
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FEW-SHOT EXAMPLE
-# ─────────────────────────────────────────────────────────────────────────────
-_FEW_SHOT_EXAMPLE = """
---- EXAMPLE INPUT (2 User Stories) ---
-Story 1 – Login
-As a registered user I want to log in with email and password so I can access my account.
-Acceptance criteria:
-  - Email and password are required
-  - Wrong credentials show "Invalid email or password"
-  - Locked after 5 failed attempts
-
-Story 2 – Logout
-As a logged-in user I want to log out so my session is ended.
-Acceptance criteria:
-  - Clicking Logout invalidates the session
-  - After logout, accessing /dashboard redirects to /login
-
---- EXAMPLE OUTPUT (abbreviated — your real output covers EVERY criterion exhaustively) ---
+_EXAMPLE = """
+--- EXAMPLE (abbreviated, 2 features) ---
 {
-  "status": "SUCCESS",
-  "reason": "",
-  "feature_name": "User Authentication",
+  "status": "SUCCESS", "reason": "", "feature_name": "User Authentication",
   "test_cases": [
-    {
-      "id": "TC-001", "title": "Login successfully with valid credentials",
+    { "id": "TC-001", "feature_group": "User Login",
+      "title": "Login successfully with valid credentials",
       "coverage_type": "P", "priority": "High",
       "precondition": "Registered user exists. No prior failed attempts. On /login.",
       "steps": ["Navigate to /login", "Enter valid email", "Enter correct password", "Click Login button"],
+      "element_locator": "N/A\\nemail_input\\npassword_input\\nlogin_button",
       "expected_result": "Redirected to /dashboard. Welcome message shows user name.",
       "actual_result": "", "status_result": "",
       "db_query": "SELECT last_login FROM users WHERE email='user@test.com';",
-      "db_expected": "last_login updated to current timestamp", "test_data_ref": "TD-001"
-    },
-    {
-      "id": "TC-002", "title": "Login fails with incorrect password",
+      "db_expected": "last_login updated to current timestamp", "test_data_ref": "TD-001" },
+    { "id": "TC-002", "feature_group": "User Login",
+      "title": "Login fails with incorrect password",
       "coverage_type": "N", "priority": "High",
       "precondition": "Registered user exists. On /login.",
       "steps": ["Navigate to /login", "Enter valid email", "Enter wrong password", "Click Login button"],
-      "expected_result": "Error 'Invalid email or password' shown. User stays on /login.",
-      "actual_result": "", "status_result": "",
-      "db_query": "SELECT failed_attempts FROM users WHERE email='user@test.com';",
-      "db_expected": "failed_attempts incremented by 1", "test_data_ref": "TD-002"
-    },
-    {
-      "id": "TC-003", "title": "Login fails with empty email field",
-      "coverage_type": "E", "priority": "Medium",
-      "precondition": "On /login.",
-      "steps": ["Navigate to /login", "Leave Email field empty", "Enter any password", "Click Login button"],
-      "expected_result": "Validation error 'Email is required' shown. Form not submitted.",
-      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-003"
-    },
-    {
-      "id": "TC-004", "title": "Login fails with empty password field",
-      "coverage_type": "E", "priority": "Medium",
-      "precondition": "On /login.",
-      "steps": ["Navigate to /login", "Enter valid email", "Leave Password field empty", "Click Login button"],
-      "expected_result": "Validation error 'Password is required' shown. Form not submitted.",
-      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-004"
-    },
-    {
-      "id": "TC-005", "title": "Account locks on 5th consecutive failed login",
-      "coverage_type": "B", "priority": "High",
-      "precondition": "Account has exactly 4 prior failed attempts recorded.",
-      "steps": ["Navigate to /login", "Enter valid email", "Enter wrong password", "Click Login (5th attempt)"],
-      "expected_result": "'Account locked. Contact support.' shown. Login button disabled.",
-      "actual_result": "", "status_result": "",
-      "db_query": "SELECT is_locked FROM users WHERE email='user@test.com';",
-      "db_expected": "is_locked = true", "test_data_ref": "TD-005"
-    },
-    {
-      "id": "TC-006", "title": "Account NOT locked on 4th failed login",
-      "coverage_type": "B", "priority": "High",
-      "precondition": "Account has exactly 3 prior failed attempts.",
-      "steps": ["Navigate to /login", "Enter valid email", "Enter wrong password", "Click Login (4th attempt)"],
-      "expected_result": "Error 'Invalid email or password' shown. Account NOT locked. Login button still enabled.",
-      "actual_result": "", "status_result": "",
-      "db_query": "SELECT is_locked, failed_attempts FROM users WHERE email='user@test.com';",
-      "db_expected": "is_locked=false, failed_attempts=4", "test_data_ref": "TD-006"
-    },
-    {
-      "id": "TC-007", "title": "Login with SQL injection in email field",
+      "element_locator": "N/A\\nemail_input\\npassword_input\\nlogin_button",
+      "expected_result": "Error message 'Invalid email or password' is displayed. User stays on /login.",
+      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-002" },
+    { "id": "TC-003", "feature_group": "User Login",
+      "title": "Login with SQL injection in email field",
       "coverage_type": "S", "priority": "High",
       "precondition": "On /login.",
-      "steps": ["Navigate to /login", "Enter SQL injection string in Email field", "Enter any password", "Click Login"],
-      "expected_result": "Login rejected. No SQL error exposed. No unauthorized access.",
-      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-007"
-    },
-    {
-      "id": "TC-008", "title": "Logout invalidates session",
+      "steps": ["Navigate to /login", "Enter SQL injection string in Email", "Enter any password", "Click Login"],
+      "element_locator": "N/A\\nemail_input\\npassword_input\\nlogin_button",
+      "expected_result": "Login rejected. No SQL error exposed.",
+      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-003" },
+    { "id": "TC-010", "feature_group": "Password Reset",
+      "title": "Request password reset with registered email",
       "coverage_type": "P", "priority": "High",
-      "precondition": "User is logged in and on /dashboard.",
-      "steps": ["Click the Logout button", "Observe redirect destination"],
-      "expected_result": "Redirected to /login. Session token invalidated.",
-      "actual_result": "", "status_result": "",
-      "db_query": "SELECT session_token FROM sessions WHERE user_id=1;",
-      "db_expected": "session_token is NULL or row deleted", "test_data_ref": ""
-    },
-    {
-      "id": "TC-009", "title": "Accessing /dashboard after logout redirects to /login",
-      "coverage_type": "S", "priority": "High",
-      "precondition": "User has just logged out.",
-      "steps": ["Paste /dashboard URL into browser address bar", "Press Enter"],
-      "expected_result": "Browser redirects to /login. Dashboard content is NOT visible.",
-      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": ""
-    }
+      "precondition": "User registered. On /forgot-password.",
+      "steps": ["Navigate to /forgot-password", "Enter registered email", "Click Send Reset Link"],
+      "element_locator": "N/A\\nemail_input\\nsend_reset_button",
+      "expected_result": "Success message shown. Reset email sent.",
+      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-010" },
+    { "id": "TC-011", "feature_group": "Password Reset",
+      "title": "Request password reset with unregistered email",
+      "coverage_type": "N", "priority": "Medium",
+      "precondition": "On /forgot-password.",
+      "steps": ["Navigate to /forgot-password", "Enter unregistered email", "Click Send Reset Link"],
+      "element_locator": "N/A\\nemail_input\\nsend_reset_button",
+      "expected_result": "Generic message shown: 'If this email exists, a reset link has been sent.'",
+      "actual_result": "", "status_result": "", "db_query": "", "db_expected": "", "test_data_ref": "TD-011" }
   ],
   "test_data_set": [
     { "id": "TD-001", "description": "Valid credentials", "data": { "email": "user@test.com", "password": "Pass@123" } },
-    { "id": "TD-002", "description": "Valid email, wrong password", "data": { "email": "user@test.com", "password": "WrongPass99!" } },
-    { "id": "TD-003", "description": "Empty email, any password", "data": { "email": "", "password": "AnyPass1" } },
-    { "id": "TD-004", "description": "Valid email, empty password", "data": { "email": "user@test.com", "password": "" } },
-    { "id": "TD-005", "description": "Account with 4 prior failures (triggers lockout)", "data": { "email": "almostlocked@test.com", "password": "BadPass!", "prior_failed_attempts": 4 } },
-    { "id": "TD-006", "description": "Account with 3 prior failures (no lockout yet)", "data": { "email": "user@test.com", "password": "BadPass!", "prior_failed_attempts": 3 } },
-    { "id": "TD-007", "description": "SQL injection payload", "data": { "email": "' OR '1'='1' --", "password": "x" } }
+    { "id": "TD-002", "description": "Wrong password", "data": { "email": "user@test.com", "password": "WrongPass!" } },
+    { "id": "TD-003", "description": "SQL injection payload", "data": { "email": "' OR '1'='1' --", "password": "x" } },
+    { "id": "TD-010", "description": "Registered email for reset", "data": { "email": "user@test.com" } },
+    { "id": "TD-011", "description": "Unregistered email", "data": { "email": "notfound@test.com" } }
   ]
 }
+
+NOTE in the example above:
+  ✅ TC-001, TC-002, TC-003 are all "User Login" (same module, different coverage types P/N/S)
+  ✅ TC-010, TC-011 are both "Password Reset" (same module, different coverage types P/N)
+  ❌ They are NOT split into "Login Success"/"Login Failure"/"Password Reset Success" etc.
 --- END EXAMPLE ---
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PUBLIC API
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 def build_generate_prompt(
-    requirement: str,
-    input_type: str = "User Story",
-    language: str = "English",
+    requirement: str, input_type: str = "User Story", language: str = "English"
 ) -> str:
-    """
-    Build prompt hoàn chỉnh gửi LLM.
-
-    Parameters
-    ----------
-    requirement : str  — nội dung requirement (có thể chứa nhiều user story/use case)
-    input_type  : str  — "User Story" | "Use Case Spec" | "Natural Language"
-    language    : str  — "English" | "Tiếng Việt"
-
-    Note: min_cases đã bị bỏ — số TC được quyết định hoàn toàn bởi
-    số lượng feature/criteria trong input, không có giới hạn cứng.
-    """
-    input_guide = _INPUT_TYPE_GUIDES.get(
-        input_type, _INPUT_TYPE_GUIDES["Natural Language"]
-    )
-
-    lang_instruction = (
-        "Write ALL human-readable fields in Vietnamese "
-        "(title, precondition, steps, expected_result, db_expected, description). "
-        "Keep JSON keys and enum values (SUCCESS / High / P / etc.) in English."
+    guide = _INPUT_TYPE_GUIDES.get(input_type, _INPUT_TYPE_GUIDES["Natural Language"])
+    lang_instr = (
+        "Write ALL human-readable fields in Vietnamese (title, precondition, steps, expected_result, db_expected, description). "
+        "Keep JSON keys, enum values, feature_group, and element_locator element names in English (snake_case)."
         if language == "Tiếng Việt"
         else "Write ALL human-readable fields in English."
     )
 
-    return f"""You are a Senior QA Engineer with 10 years of experience in manual and automated testing.
+    return f"""You are a Senior QA Engineer with 10 years of experience.
 Your task: read the software requirement below and generate a COMPLETE, EXHAUSTIVE test suite.
 
-"Exhaustive" means:
-  — Every feature mentioned must have test cases.
-  — Every acceptance criterion maps to ≥1 dedicated test case.
-  — Every boundary value, edge condition, and security risk is covered.
-  — You may NOT summarise, skip, or merge cases to reduce the total count.
-  — There is NO upper limit on the number of test cases.
+════════ MANDATORY REASONING ════════
+{_COT}
 
-════════════════════════════════════════════
-MANDATORY REASONING  (run before writing JSON)
-════════════════════════════════════════════
-{_COT_INSTRUCTION}
+════════ INPUT FORMAT GUIDE ════════
+{guide}
 
-════════════════════════════════════════════
-INPUT FORMAT GUIDE
-════════════════════════════════════════════
-{input_guide}
+════════ FEATURE GROUP RULES ════════
+{_FEATURE_GROUP_RULES}
 
-════════════════════════════════════════════
-COVERAGE REQUIREMENTS
-════════════════════════════════════════════
+════════ COVERAGE REQUIREMENTS ════════
 {_COVERAGE_TYPES}
 
-════════════════════════════════════════════
-NON-NEGOTIABLE QUALITY RULES
-════════════════════════════════════════════
-1.  COMPLETENESS  : Every feature in the input MUST have its own test cases. No skipping.
-2.  ONE-TO-ONE    : One acceptance criterion = one dedicated TC. No bundling.
-3.  STEPS         : Each step is a concrete atomic action: "Click the Submit button" ✓ / "Submit form" ✗
-4.  REAL DATA     : TD values must be real strings/numbers, never "<email>" or "YOUR_VALUE".
-5.  BLANK FIELDS  : actual_result and status_result MUST be "" — do not fill them.
-6.  NO UPPER LIMIT: Generate as many TCs as the input demands. 10 stories → expect 50–100+ TCs.
-7.  LANGUAGE      : {lang_instruction}
-8.  SELF-CHECK    : Before outputting JSON, re-read the full input and confirm nothing was missed.
+════════ QUALITY RULES ════════
+1. COMPLETENESS      : Every feature MUST have test cases.
+2. ONE-TO-ONE        : One acceptance criterion = one dedicated TC.
+3. STEPS             : Each step is a concrete atomic action.
+4. REAL DATA         : TD values must be real strings/numbers, never placeholders.
+5. BLANK FIELDS      : actual_result and status_result MUST be "".
+6. FEATURE GROUP     : Every TC must have 'feature_group' = MODULE NAME (not test outcome/type).
+                       All TCs for the same module share the EXACT SAME feature_group string.
+7. ELEMENT & LOCATOR : Every TC must have 'element_locator' with exactly as many lines as steps.
+8. LANGUAGE          : {lang_instr}
 
-════════════════════════════════════════════
-FEW-SHOT EXAMPLE
-════════════════════════════════════════════
-{_FEW_SHOT_EXAMPLE}
+════════ EXAMPLE ════════
+{_EXAMPLE}
 
-════════════════════════════════════════════
-OUTPUT FORMAT  (strict — no deviation)
-════════════════════════════════════════════
+════════ OUTPUT FORMAT ════════
 {_OUTPUT_SCHEMA}
 
-════════════════════════════════════════════
-INPUT TO PROCESS
-════════════════════════════════════════════
+════════ INPUT TO PROCESS ════════
 Input Type  : {input_type}
 Requirement :
 {requirement}
-════════════════════════════════════════════
-Produce the JSON now — no preamble, no explanation, only the JSON object:"""
+════════
+Produce the JSON now:"""

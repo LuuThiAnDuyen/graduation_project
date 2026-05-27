@@ -6,7 +6,6 @@ Thay đổi so với v1:
   • Endpoint POST /export/excel  trả file .xlsx gồm 2 sheet:
       Sheet 1 "Test Cases"   – toàn bộ test cases
       Sheet 2 "Test Data"    – toàn bộ test data entries
-  • Endpoint POST /export/json   trả raw JSON (tiện tích hợp CI/CD)
   • Health endpoint trả thêm version metadata
 """
 
@@ -24,7 +23,7 @@ from core.excel_exporter import to_excel  # tách logic export ra module riêng
 
 app = FastAPI(
     title="AI Test Case Generator API",
-    description="Tự động sinh test case và test data từ requirement phần mềm bằng Gemini LLM",
+    description="",
     version="3.0.0",
 )
 
@@ -94,7 +93,6 @@ def root():
         "endpoints": [
             "POST /generate          – sinh test cases (JSON response)",
             "POST /export/excel      – sinh test cases + download .xlsx",
-            "POST /export/json       – sinh test cases + download .json",
         ],
     }
 
@@ -167,45 +165,5 @@ def export_excel(body: GenerateRequest):
     return StreamingResponse(
         BytesIO(excel_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-# ─────────────────────────────────────────────
-# ROUTES — EXPORT JSON
-# ─────────────────────────────────────────────
-
-
-@app.post("/export/json", tags=["Export"])
-def export_json(body: GenerateRequest):
-    """
-    Chạy pipeline rồi trả về file .json thuần — tiện tích hợp CI/CD pipeline.
-    """
-    import json as _json
-
-    try:
-        result = run_pipeline(
-            requirement=body.requirement,
-            input_type=body.input_type,
-            language=body.language,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    if result["status"] != "SUCCESS":
-        raise HTTPException(
-            status_code=422,
-            detail={"status": result["status"], "reason": result["reason"]},
-        )
-
-    safe_name = result["feature_name"].replace(" ", "_")[:30] or "testcases"
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    filename = f"{safe_name}_{timestamp}.json"
-
-    json_bytes = _json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
-
-    return StreamingResponse(
-        BytesIO(json_bytes),
-        media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
